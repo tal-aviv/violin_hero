@@ -3188,6 +3188,40 @@ class ViolinGameScreen extends StatefulWidget {
   State<ViolinGameScreen> createState() => _ViolinGameScreenState();
 }
 
+class _AudioPool {
+  _AudioPool({this.size = 4});
+
+  final int size;
+  final List<AudioPlayer> _players = [];
+  int _index = 0;
+
+  void init() {
+    for (int i = 0; i < size; i++) {
+      _players.add(AudioPlayer());
+    }
+  }
+
+  Future<void> play(Uint8List wavBytes, {double volume = 0.85}) async {
+    final player = _players[_index];
+    _index = (_index + 1) % size;
+    try {
+      await player.play(
+        BytesSource(wavBytes, mimeType: 'audio/wav'),
+        volume: volume,
+      );
+    } catch (_) {
+      await SystemSound.play(SystemSoundType.click);
+    }
+  }
+
+  void dispose() {
+    for (final p in _players) {
+      p.dispose();
+    }
+    _players.clear();
+  }
+}
+
 class _ViolinGameScreenState extends State<ViolinGameScreen> {
   final Random _random = Random();
 
@@ -3371,7 +3405,7 @@ class _ViolinGameScreenState extends State<ViolinGameScreen> {
   static const int _mistakesBeforeHintReturns = 2;
   static const int _relearnCorrectToHideHintAgain = 2;
   int _neckShakeTrigger = 0;
-  late final AudioPlayer _audioPlayer;
+  late final _AudioPool _audioPool;
   final Map<String, Uint8List> _toneCache = {};
   static const double _sectionStarAccuracyThreshold = 0.85;
 
@@ -3389,15 +3423,14 @@ class _ViolinGameScreenState extends State<ViolinGameScreen> {
   @override
   void initState() {
     super.initState();
-    _audioPlayer = AudioPlayer();
-    unawaited(_audioPlayer.setPlayerMode(PlayerMode.lowLatency));
+    _audioPool = _AudioPool()..init();
     _activeStringIndices = widget.activeStringIndices.toSet().toList()..sort();
     _currentNote = _pickRandomNoteFromSelection();
   }
 
   @override
   void dispose() {
-    _audioPlayer.dispose();
+    _audioPool.dispose();
     super.dispose();
   }
 
@@ -3581,15 +3614,7 @@ class _ViolinGameScreenState extends State<ViolinGameScreen> {
   Future<void> _playNoteTone(GameNote note) async {
     final toneBytes =
         _toneCache.putIfAbsent(note.id, () => _buildViolinLikeWav(note.frequencyHz));
-    try {
-      await _audioPlayer.stop();
-      await _audioPlayer.play(
-        BytesSource(toneBytes, mimeType: 'audio/wav'),
-        volume: 0.85,
-      );
-    } catch (_) {
-      await SystemSound.play(SystemSoundType.click);
-    }
+    await _audioPool.play(toneBytes);
   }
 
   Uint8List _buildViolinLikeWav(double frequencyHz) {
@@ -3891,7 +3916,7 @@ class _SongLearningScreenState extends State<SongLearningScreen> {
     for (final note in _songNotePool) note.id: 0,
   };
 
-  late final AudioPlayer _audioPlayer;
+  late final _AudioPool _audioPool;
   final Map<String, Uint8List> _toneCache = {};
   late SongDefinition _selectedSong;
   int _songIndex = 0;
@@ -3913,14 +3938,13 @@ class _SongLearningScreenState extends State<SongLearningScreen> {
   @override
   void initState() {
     super.initState();
-    _audioPlayer = AudioPlayer();
-    unawaited(_audioPlayer.setPlayerMode(PlayerMode.lowLatency));
+    _audioPool = _AudioPool()..init();
     _selectedSong = widget.song;
   }
 
   @override
   void dispose() {
-    _audioPlayer.dispose();
+    _audioPool.dispose();
     super.dispose();
   }
 
@@ -4224,15 +4248,7 @@ class _SongLearningScreenState extends State<SongLearningScreen> {
       cacheKey,
       () => _buildViolinLikeWav(note.frequencyHz, durationMs: durationMs),
     );
-    try {
-      await _audioPlayer.stop();
-      await _audioPlayer.play(
-        BytesSource(toneBytes, mimeType: 'audio/wav'),
-        volume: 0.85,
-      );
-    } catch (_) {
-      await SystemSound.play(SystemSoundType.click);
-    }
+    await _audioPool.play(toneBytes);
   }
 
   Uint8List _buildViolinLikeWav(double frequencyHz, {required int durationMs}) {

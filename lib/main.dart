@@ -152,11 +152,24 @@ class _HeroProgressStore {
   static const String _songSectionStarsKey = 'hero_song_section_rank_stars_v2';
   static const List<int> _streakMilestones = [2, 3, 5, 7, 14, 21, 30];
 
+  static const String _authEndpoint = String.fromEnvironment(
+    'VH_AUTH_ENDPOINT',
+    defaultValue: '',
+  );
+
+  static String get _progressEndpoint {
+    if (_authEndpoint.isEmpty) return '';
+    final i = _authEndpoint.lastIndexOf('/');
+    if (i < 0) return '';
+    return '${_authEndpoint.substring(0, i)}/violin-progress';
+  }
+
   static final ValueNotifier<HeroProgress> progressListenable =
       ValueNotifier<HeroProgress>(HeroProgress.initial);
   static bool _loaded = false;
   static final Set<int> _awardedStringThisSession = <int>{};
   static final Set<String> _awardedSongThisSession = <String>{};
+  static Timer? _remoteSyncTimer;
 
   static Future<SharedPreferences> _prefs() => SharedPreferences.getInstance();
 
@@ -196,6 +209,126 @@ class _HeroProgressStore {
       _songSectionStarsKey,
       jsonEncode(progress.songSectionStars),
     );
+    _scheduleRemoteSync();
+  }
+
+  static void _scheduleRemoteSync() {
+    if (_progressEndpoint.isEmpty) return;
+    _remoteSyncTimer?.cancel();
+    _remoteSyncTimer = Timer(const Duration(seconds: 2), () {
+      unawaited(_syncProgressToRemote());
+    });
+  }
+
+  static Future<void> _syncProgressToRemote() async {
+    if (_progressEndpoint.isEmpty) return;
+    try {
+      final prefs = await _prefs();
+      final username = prefs.getString('auth_username');
+      if (username == null || username.isEmpty) return;
+      final progress = progressListenable.value;
+      final uri = Uri.parse(_progressEndpoint);
+      await http
+          .post(
+            uri,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'action': 'save',
+              'username': username,
+              'progress': {
+                'stars': progress.stars,
+                'streak_days': progress.streakDays,
+                'last_active_day_epoch': progress.lastActiveDayEpoch,
+                'week_id': progress.weekId,
+                'active_days_this_week': progress.activeDaysThisWeek,
+                'streak_shield_used_week_id': progress.streakShieldUsedWeekId,
+                'weekly_bonus_awarded_week_id':
+                    progress.weeklyBonusAwardedWeekId,
+                'string_section_stars': {
+                  for (final e in progress.stringSectionStars.entries)
+                    '${e.key}': e.value,
+                },
+                'song_section_stars': progress.songSectionStars,
+              },
+            }),
+          )
+          .timeout(const Duration(seconds: 8));
+    } catch (_) {
+      // Remote sync is best-effort; local data is always authoritative.
+    }
+  }
+
+  static Future<HeroProgress?> loadFromRemote(String username) async {
+    if (_progressEndpoint.isEmpty) return null;
+    try {
+      final uri = Uri.parse(_progressEndpoint);
+      final response = await http
+          .post(
+            uri,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'action': 'load', 'username': username}),
+          )
+          .timeout(const Duration(seconds: 8));
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      if (data['found'] != true) return null;
+      final p = data['progress'] as Map<String, dynamic>;
+      return HeroProgress(
+        stars: max(0, (p['stars'] as num?)?.toInt() ?? 0),
+        streakDays: max(0, (p['streak_days'] as num?)?.toInt() ?? 0),
+        lastActiveDayEpoch: (p['last_active_day_epoch'] as num?)?.toInt(),
+        weekId: (p['week_id'] as num?)?.toInt() ?? 0,
+        activeDaysThisWeek:
+            max(0, (p['active_days_this_week'] as num?)?.toInt() ?? 0),
+        streakShieldUsedWeekId:
+            (p['streak_shield_used_week_id'] as num?)?.toInt() ?? -1,
+        weeklyBonusAwardedWeekId:
+            (p['weekly_bonus_awarded_week_id'] as num?)?.toInt() ?? -1,
+        stringSectionStars:
+            _decodeStringStars(jsonEncode(p['string_section_stars'] ?? {})),
+        songSectionStars:
+            _decodeSongStars(jsonEncode(p['song_section_stars'] ?? {})),
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static HeroProgress mergeProgress(HeroProgress local, HeroProgress remote) {
+    final useRemoteActivity =
+        (remote.lastActiveDayEpoch ?? 0) > (local.lastActiveDayEpoch ?? 0);
+    final activity = useRemoteActivity ? remote : local;
+    final mergedStringStars = Map<int, int>.from(local.stringSectionStars);
+    for (final e in remote.stringSectionStars.entries) {
+      mergedStringStars[e.key] =
+          max(mergedStringStars[e.key] ?? 0, e.value);
+    }
+    final mergedSongStars = Map<String, int>.from(local.songSectionStars);
+    for (final e in remote.songSectionStars.entries) {
+      mergedSongStars[e.key] = max(mergedSongStars[e.key] ?? 0, e.value);
+    }
+    return HeroProgress(
+      stars: max(local.stars, remote.stars),
+      streakDays: activity.streakDays,
+      lastActiveDayEpoch: activity.lastActiveDayEpoch,
+      weekId: activity.weekId,
+      activeDaysThisWeek: activity.activeDaysThisWeek,
+      streakShieldUsedWeekId:
+          max(local.streakShieldUsedWeekId, remote.streakShieldUsedWeekId),
+      weeklyBonusAwardedWeekId:
+          max(local.weeklyBonusAwardedWeekId, remote.weeklyBonusAwardedWeekId),
+      stringSectionStars: mergedStringStars,
+      songSectionStars: mergedSongStars,
+    );
+  }
+
+  static Future<void> loadAndMergeRemote(String username) async {
+    final remote = await loadFromRemote(username);
+    if (remote == null) return;
+    await load();
+    final local = progressListenable.value;
+    final merged = mergeProgress(local, remote);
+    progressListenable.value = merged;
+    await _persist(merged);
   }
 
   static Map<int, int> _decodeStringStars(String? raw) {
@@ -1439,6 +1572,9 @@ class _ViolinHeroAppState extends State<ViolinHeroApp> {
     final loggedIn = await _LocalAuthStore.isLoggedIn();
     await _HeroProgressStore.load();
     final session = loggedIn ? await _LocalAuthStore.currentProfile() : null;
+    if (session != null) {
+      unawaited(_HeroProgressStore.loadAndMergeRemote(session.username));
+    }
     if (!mounted || !context.mounted) return;
     setState(() {
       _isLoggedIn = loggedIn;
@@ -1450,6 +1586,7 @@ class _ViolinHeroAppState extends State<ViolinHeroApp> {
     await _HeroProgressStore.load();
     final session = await _LocalAuthStore.currentProfile();
     if (session != null) {
+      await _HeroProgressStore.loadAndMergeRemote(session.username);
       final sessionId = await UserEventLogStore.startSessionForUser(session.username);
       await UserEventLogStore.log(
         username: session.username,

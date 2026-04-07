@@ -32,6 +32,20 @@
 
   <title>violin_hero</title>
   <link rel="manifest" href="manifest.json">
+  <style>
+    @media screen and (orientation: landscape) {
+      html {
+        transform: rotate(-90deg);
+        transform-origin: left top;
+        width: 100vh;
+        height: 100vw;
+        overflow: hidden;
+        position: absolute;
+        top: 100%;
+        left: 0;
+      }
+    }
+  </style>
 </head>
 <body style="touch-action: none; -ms-touch-action: none; overflow: hidden; height: 100%; margin: 0;">
   <!--

@@ -4814,17 +4814,17 @@ class _ViolinFingerGeometry {
     final y1 = yForFingerOnScreen(fingerNumber: 1, size: size);
     final y2 = yForFingerOnScreen(fingerNumber: 2, size: size);
     final y3 = yForFingerOnScreen(fingerNumber: 3, size: size);
-    final openZonePx = min(mmToLogicalPx(openStringZoneMm), (bottom - top) * 0.35);
+    final yOpen = yForFingerOnScreen(fingerNumber: 0, size: size);
 
     final int fingerNumber;
-    if (clampedY >= bottom - openZonePx) {
-      fingerNumber = 0;
-    } else if (clampedY < (y1 + y2) / 2) {
+    if (clampedY < (y1 + y2) / 2) {
       fingerNumber = 1;
     } else if (clampedY < (y2 + y3) / 2) {
       fingerNumber = 2;
-    } else {
+    } else if (clampedY < (y3 + yOpen) / 2) {
       fingerNumber = 3;
+    } else {
+      fingerNumber = 0;
     }
     final snappedY = yForFingerOnScreen(fingerNumber: fingerNumber, size: size);
 

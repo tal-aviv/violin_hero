@@ -4908,9 +4908,9 @@ class _VerticalViolinNeckCardState extends State<_VerticalViolinNeckCard> {
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final size = constraints.biggest;
-                return GestureDetector(
+                return Listener(
                   behavior: HitTestBehavior.opaque,
-                  onTapDown: (details) => _handleTap(details.localPosition, size),
+                  onPointerDown: (event) => _handleTap(event.localPosition, size),
                   child: CustomPaint(
                     painter: _VerticalViolinNeckPainter(
                       marker: _marker,

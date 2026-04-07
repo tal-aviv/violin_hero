@@ -1650,6 +1650,23 @@ class _ViolinHeroAppState extends State<ViolinHeroApp> {
         ),
         scaffoldBackgroundColor: const Color(0xFFF6F7FF),
       ),
+      builder: (context, child) {
+        final mq = MediaQuery.of(context);
+        final isLandscape = mq.size.width > mq.size.height;
+        if (!isLandscape) return child!;
+        final portraitSize = Size(mq.size.height, mq.size.width);
+        return MediaQuery(
+          data: mq.copyWith(size: portraitSize),
+          child: RotatedBox(
+            quarterTurns: -1,
+            child: SizedBox(
+              width: portraitSize.width,
+              height: portraitSize.height,
+              child: child,
+            ),
+          ),
+        );
+      },
       home: switch (_isLoggedIn) {
         null => const Scaffold(body: Center(child: CircularProgressIndicator())),
         true => ModuleSelectionScreen(

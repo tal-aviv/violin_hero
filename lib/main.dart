@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:js_interop';
 import 'dart:math';
 import 'dart:typed_data';
 import 'dart:ui' show lerpDouble;
 
 import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
@@ -3188,22 +3190,54 @@ class ViolinGameScreen extends StatefulWidget {
   State<ViolinGameScreen> createState() => _ViolinGameScreenState();
 }
 
+@JS('Audio')
+extension type _JSAudio._(JSObject _) implements JSObject {
+  external factory _JSAudio([String src]);
+  external set volume(num value);
+  external JSPromise<JSAny?> play();
+}
+
 class _AudioPool {
   _AudioPool({this.size = 4});
 
   final int size;
-  final List<AudioPlayer> _players = [];
-  int _index = 0;
+  final Map<String, String> _dataUrlCache = {};
+
+  final List<AudioPlayer> _nativePlayers = [];
+  int _nativeIndex = 0;
 
   void init() {
-    for (int i = 0; i < size; i++) {
-      _players.add(AudioPlayer());
+    if (!kIsWeb) {
+      for (int i = 0; i < size; i++) {
+        _nativePlayers.add(AudioPlayer());
+      }
     }
   }
 
-  Future<void> play(Uint8List wavBytes, {double volume = 0.85}) async {
-    final player = _players[_index];
-    _index = (_index + 1) % size;
+  Future<void> play(Uint8List wavBytes, {double volume = 0.85, String? cacheKey}) async {
+    if (kIsWeb) {
+      _playWeb(wavBytes, volume: volume, cacheKey: cacheKey);
+    } else {
+      await _playNative(wavBytes, volume: volume);
+    }
+  }
+
+  void _playWeb(Uint8List wavBytes, {double volume = 0.85, String? cacheKey}) {
+    try {
+      final key = cacheKey ?? '${wavBytes.length}_${wavBytes.hashCode}';
+      final dataUrl = _dataUrlCache.putIfAbsent(key, () {
+        final b64 = base64Encode(wavBytes);
+        return 'data:audio/wav;base64,$b64';
+      });
+      final audio = _JSAudio(dataUrl);
+      audio.volume = volume;
+      audio.play().toDart.catchError((_) => null);
+    } catch (_) {}
+  }
+
+  Future<void> _playNative(Uint8List wavBytes, {double volume = 0.85}) async {
+    final player = _nativePlayers[_nativeIndex];
+    _nativeIndex = (_nativeIndex + 1) % size;
     try {
       await player.play(
         BytesSource(wavBytes, mimeType: 'audio/wav'),
@@ -3215,10 +3249,11 @@ class _AudioPool {
   }
 
   void dispose() {
-    for (final p in _players) {
+    for (final p in _nativePlayers) {
       p.dispose();
     }
-    _players.clear();
+    _nativePlayers.clear();
+    _dataUrlCache.clear();
   }
 }
 
@@ -3614,7 +3649,7 @@ class _ViolinGameScreenState extends State<ViolinGameScreen> {
   Future<void> _playNoteTone(GameNote note) async {
     final toneBytes =
         _toneCache.putIfAbsent(note.id, () => _buildViolinLikeWav(note.frequencyHz));
-    await _audioPool.play(toneBytes);
+    await _audioPool.play(toneBytes, cacheKey: note.id);
   }
 
   Uint8List _buildViolinLikeWav(double frequencyHz) {
@@ -4248,7 +4283,7 @@ class _SongLearningScreenState extends State<SongLearningScreen> {
       cacheKey,
       () => _buildViolinLikeWav(note.frequencyHz, durationMs: durationMs),
     );
-    await _audioPool.play(toneBytes);
+    await _audioPool.play(toneBytes, cacheKey: cacheKey);
   }
 
   Uint8List _buildViolinLikeWav(double frequencyHz, {required int durationMs}) {

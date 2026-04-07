@@ -1211,7 +1211,7 @@ const List<SongDefinition> kSongLibrary = [
       1, 1, 2,
       1, 1, 2,
       1, 1, 1, 1,
-      4,
+      2,
       // Part B
       1, 1, 1, 1,
       1, 1, 2,
@@ -1220,7 +1220,7 @@ const List<SongDefinition> kSongLibrary = [
       1, 1, 2,
       1, 1, 2,
       1, 1, 1, 1,
-      4,
+      2,
     ],
   ),
 ];

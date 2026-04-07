@@ -109,8 +109,12 @@
         deferredPrompt.prompt();
         deferredPrompt.userChoice.then(function(choice) {
           deferredPrompt = null;
-          if (choice.outcome === 'accepted') return;
-          banner.style.display = 'none';
+          if (choice.outcome === 'accepted') {
+            banner.style.display = 'none';
+            showInstalledOverlay();
+          } else {
+            banner.style.display = 'none';
+          }
         });
       } else {
         banner.style.display = 'none';
@@ -123,13 +127,23 @@
     });
 
     window.addEventListener('appinstalled', function() {
-      subtitle.textContent = 'Installed! Find Violin Hero on your home screen.';
-      actionBtn.textContent = 'Open App';
-      closeBtn.style.display = 'none';
-      actionBtn.onclick = function() {
-        window.location.reload();
-      };
+      banner.style.display = 'none';
+      showInstalledOverlay();
     });
+
+    function showInstalledOverlay() {
+      if (document.getElementById('pwa-installed-overlay')) return;
+      var overlay = document.createElement('div');
+      overlay.id = 'pwa-installed-overlay';
+      overlay.style.cssText = 'position:fixed;inset:0;z-index:999999;background:rgba(0,0,0,0.85);display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:-apple-system,BlinkMacSystemFont,sans-serif;color:#fff;text-align:center;padding:32px;';
+      overlay.innerHTML =
+        '<img src="icons/Icon-192.png" style="width:80px;height:80px;border-radius:16px;margin-bottom:20px;">' +
+        '<div style="font-size:22px;font-weight:800;margin-bottom:8px;">Violin Hero Installed!</div>' +
+        '<div style="font-size:15px;color:#ccc;margin-bottom:32px;max-width:280px;">Go to your home screen to open the app.</div>' +
+        '<div style="font-size:48px;animation:pwa-bounce 1s ease infinite;">👇</div>' +
+        '<style>@keyframes pwa-bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(12px)}}</style>';
+      document.body.appendChild(overlay);
+    }
   })();
   </script>
 </body>

@@ -3831,6 +3831,7 @@ class SongLearningScreen extends StatefulWidget {
 class _SongLearningScreenState extends State<SongLearningScreen> {
   static const int _quarterNoteDurationMs = 620;
   static const int _halfNoteDurationMs = 1120;
+  static const int _wholeNoteDurationMs = 2200;
   static const int _eighthNoteDurationMs = 340;
   static const double _sectionStarAccuracyThreshold = 0.85;
   static const List<GameNote> _songNotePool = [
@@ -3996,6 +3997,7 @@ class _SongLearningScreenState extends State<SongLearningScreen> {
       _selectedSong.eighthNoteIndices?.contains(_songIndex) ?? false;
   int get _currentNoteDurationMs {
     if (_currentIsEighthNote) return _eighthNoteDurationMs;
+    if (_currentBeatUnits >= 4) return _wholeNoteDurationMs;
     if (_currentBeatUnits >= 2) return _halfNoteDurationMs;
     return _quarterNoteDurationMs;
   }
@@ -4424,7 +4426,8 @@ class _SongLearningScreenState extends State<SongLearningScreen> {
                                   feedbackState: _feedbackState,
                                   showHintColors: _showHintColors,
                                   hintColor: _currentNote.hintColor,
-                                  isHalfNote: _currentBeatUnits >= 2,
+                                  isHalfNote: _currentBeatUnits >= 2 && _currentBeatUnits < 4,
+                                  isWholeNote: _currentBeatUnits >= 4,
                                   isEighthNote: _currentIsEighthNote,
                                 ),
                                 const SizedBox(height: 8),
@@ -4674,6 +4677,7 @@ class _MusicStaffCard extends StatelessWidget {
     required this.showHintColors,
     required this.hintColor,
     this.isHalfNote = false,
+    this.isWholeNote = false,
     this.isEighthNote = false,
   });
 
@@ -4682,6 +4686,7 @@ class _MusicStaffCard extends StatelessWidget {
   final bool showHintColors;
   final Color hintColor;
   final bool isHalfNote;
+  final bool isWholeNote;
   final bool isEighthNote;
 
   @override
@@ -4710,6 +4715,7 @@ class _MusicStaffCard extends StatelessWidget {
                 showSharp: note.letterLabel.contains('#'),
                 noteColor: showHintColors ? hintColor : const Color(0xFF111111),
                 isHalfNote: isHalfNote,
+                isWholeNote: isWholeNote,
                 isEighthNote: isEighthNote,
               ),
               child: const SizedBox.expand(),
@@ -4989,6 +4995,7 @@ class _StaffPainter extends CustomPainter {
     required this.showSharp,
     required this.noteColor,
     required this.isHalfNote,
+    required this.isWholeNote,
     required this.isEighthNote,
   });
 
@@ -4996,6 +5003,7 @@ class _StaffPainter extends CustomPainter {
   final bool showSharp;
   final Color noteColor;
   final bool isHalfNote;
+  final bool isWholeNote;
   final bool isEighthNote;
 
   @override
@@ -5163,11 +5171,15 @@ class _StaffPainter extends CustomPainter {
       width: noteHeadWidth,
       height: noteHeadHeight,
     );
-    if (isHalfNote) {
+    if (isWholeNote || isHalfNote) {
       canvas.drawOval(noteHeadRect, noteStrokePaint);
     } else {
       canvas.drawOval(noteHeadRect, noteFillPaint);
     }
+
+    if (isWholeNote) {
+      // Whole notes have no stem -- drawing is complete after the head.
+    } else {
 
     final stemLength = spacing * 3.5;
     final stemPaint = Paint()
@@ -5176,8 +5188,6 @@ class _StaffPainter extends CustomPainter {
     final staffMiddleY = (staffTopY + staffBottomY) / 2;
     final stemGoesDownOnLeft = noteY < staffMiddleY;
     final rx = noteHeadWidth * 0.5;
-    // Half notes: attach on outer edge to keep hollow head clean.
-    // Quarter notes: attach slightly inside for a smooth continuous join.
     final attachXOffset = isHalfNote ? rx : noteHeadWidth * 0.43;
     if (stemGoesDownOnLeft) {
       final stemX = noteX - attachXOffset;
@@ -5248,6 +5258,8 @@ class _StaffPainter extends CustomPainter {
         canvas.drawPath(flagPath, flagPaint);
       }
     }
+
+    } // end of !isWholeNote stem block
   }
 
   @override
@@ -5256,6 +5268,7 @@ class _StaffPainter extends CustomPainter {
         oldDelegate.showSharp != showSharp ||
         oldDelegate.noteColor != noteColor ||
         oldDelegate.isHalfNote != isHalfNote ||
+        oldDelegate.isWholeNote != isWholeNote ||
         oldDelegate.isEighthNote != isEighthNote;
   }
 }

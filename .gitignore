@@ -23,6 +23,15 @@ migrate_working_dir/
 # is commented out by default.
 #.vscode/
 
+# Secrets
+.env
+
+# Node deps (only used as a dev tool by deploy.sh via `npx gh-pages`)
+node_modules/
+
+# Supabase CLI local cache (project-ref, version pins, etc.)
+supabase/.temp/
+
 # Flutter/Dart/Pub related
 **/doc/api/
 **/ios/Flutter/.last_build_id

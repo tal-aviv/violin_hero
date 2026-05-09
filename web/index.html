@@ -78,7 +78,11 @@
     // Don't show if already installed as PWA or dismissed recently
     if (window.matchMedia('(display-mode: standalone)').matches) return;
     if (window.navigator.standalone === true) return;
-    if (localStorage.getItem('pwa-dismissed')) return;
+    if (sessionStorage.getItem('pwa-dismissed')) return;
+
+    var isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+                   (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (!isMobile) return;
 
     var deferredPrompt = null;
     var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
@@ -103,20 +107,43 @@
     actionBtn.addEventListener('click', function() {
       if (deferredPrompt) {
         deferredPrompt.prompt();
-        deferredPrompt.userChoice.then(function() { deferredPrompt = null; });
+        deferredPrompt.userChoice.then(function(choice) {
+          deferredPrompt = null;
+          if (choice.outcome === 'accepted') {
+            banner.style.display = 'none';
+            showInstalledOverlay();
+          } else {
+            banner.style.display = 'none';
+          }
+        });
+      } else {
+        banner.style.display = 'none';
       }
-      banner.style.display = 'none';
     });
 
     closeBtn.addEventListener('click', function() {
       banner.style.display = 'none';
-      localStorage.setItem('pwa-dismissed', '1');
+      sessionStorage.setItem('pwa-dismissed', '1');
     });
 
-    // Hide if app gets installed
     window.addEventListener('appinstalled', function() {
       banner.style.display = 'none';
+      showInstalledOverlay();
     });
+
+    function showInstalledOverlay() {
+      if (document.getElementById('pwa-installed-overlay')) return;
+      var overlay = document.createElement('div');
+      overlay.id = 'pwa-installed-overlay';
+      overlay.style.cssText = 'position:fixed;inset:0;z-index:999999;background:rgba(0,0,0,0.85);display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:-apple-system,BlinkMacSystemFont,sans-serif;color:#fff;text-align:center;padding:32px;';
+      overlay.innerHTML =
+        '<img src="icons/Icon-192.png" style="width:80px;height:80px;border-radius:16px;margin-bottom:20px;">' +
+        '<div style="font-size:22px;font-weight:800;margin-bottom:8px;">Violin Hero Installed!</div>' +
+        '<div style="font-size:15px;color:#ccc;margin-bottom:32px;max-width:280px;">Go to your home screen to open the app.</div>' +
+        '<div style="font-size:48px;animation:pwa-bounce 1s ease infinite;">👇</div>' +
+        '<style>@keyframes pwa-bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(12px)}}</style>';
+      document.body.appendChild(overlay);
+    }
   })();
   </script>
 </body>

@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:js_interop';
 import 'dart:math';
 import 'dart:typed_data';
 import 'dart:ui' show lerpDouble;
@@ -11,6 +10,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+
+// Conditional import: pulls in the real JS interop helper when compiling
+// for the web, and a no-op stub otherwise. This keeps `dart:js_interop`
+// out of native builds entirely.
+import 'audio_stub.dart' if (dart.library.js_interop) 'audio_web.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -24,6 +28,131 @@ Future<void> main() async {
 enum FeedbackState { idle, correct, wrong }
 
 enum StageMode { learnSingleString, mixedStrings }
+
+/// Standard note durations supported by the rhythm engine.
+///
+/// To add a new rhythm (sixteenth, dotted eighth, triplet, …):
+///   1. Add a value to this enum.
+///   2. Add a [NoteDurationSpec] entry to [kNoteDurationSpecs] describing
+///      its rhythmic value and how it should be drawn on the staff.
+///   3. Add a branch to [noteDurationMs] mapping it to playback ms.
+///
+/// Everything else (audio playback, staff rendering, beat counting) reads
+/// from those tables, so a new rhythm requires no scattered `if` updates.
+enum NoteDuration {
+  eighth,
+  quarter,
+  dottedQuarter,
+  half,
+  dottedHalf,
+  whole,
+}
+
+/// Visual + rhythmic properties of a [NoteDuration]. The renderer queries
+/// these flags so each duration can be drawn correctly on the staff
+/// without bespoke per-duration code paths.
+class NoteDurationSpec {
+  const NoteDurationSpec({
+    required this.beatUnits,
+    required this.hasOpenHead,
+    required this.hasStem,
+    required this.flagCount,
+    required this.isDotted,
+  });
+
+  /// Length of the note expressed in quarter-note beats.
+  final double beatUnits;
+
+  /// `true` for half / dotted-half / whole — drawn as an outlined oval.
+  final bool hasOpenHead;
+
+  /// `false` only for whole notes (no stem).
+  final bool hasStem;
+
+  /// 0 = none, 1 = eighth flag, 2 = sixteenth (reserved for future use).
+  final int flagCount;
+
+  /// `true` for dotted rhythms — the painter renders an augmentation dot.
+  final bool isDotted;
+}
+
+const Map<NoteDuration, NoteDurationSpec> kNoteDurationSpecs = {
+  NoteDuration.eighth: NoteDurationSpec(
+    beatUnits: 0.5,
+    hasOpenHead: false,
+    hasStem: true,
+    flagCount: 1,
+    isDotted: false,
+  ),
+  NoteDuration.quarter: NoteDurationSpec(
+    beatUnits: 1.0,
+    hasOpenHead: false,
+    hasStem: true,
+    flagCount: 0,
+    isDotted: false,
+  ),
+  NoteDuration.dottedQuarter: NoteDurationSpec(
+    beatUnits: 1.5,
+    hasOpenHead: false,
+    hasStem: true,
+    flagCount: 0,
+    isDotted: true,
+  ),
+  NoteDuration.half: NoteDurationSpec(
+    beatUnits: 2.0,
+    hasOpenHead: true,
+    hasStem: true,
+    flagCount: 0,
+    isDotted: false,
+  ),
+  NoteDuration.dottedHalf: NoteDurationSpec(
+    beatUnits: 3.0,
+    hasOpenHead: true,
+    hasStem: true,
+    flagCount: 0,
+    isDotted: true,
+  ),
+  NoteDuration.whole: NoteDurationSpec(
+    beatUnits: 4.0,
+    hasOpenHead: true,
+    hasStem: false,
+    flagCount: 0,
+    isDotted: false,
+  ),
+};
+
+extension NoteDurationStyle on NoteDuration {
+  NoteDurationSpec get spec => kNoteDurationSpecs[this]!;
+}
+
+/// Base millisecond durations used by [noteDurationMs]. Tuned for a
+/// learning experience that gives kids time to react on shorter notes,
+/// so these aren't strict 2:1 ratios.
+const int kEighthNoteMs = 340;
+const int kQuarterNoteMs = 620;
+const int kHalfNoteMs = 1120;
+const int kWholeNoteMs = 2200;
+
+/// Audio playback duration for each [NoteDuration]. Dotted values are
+/// derived additively (dotted quarter = quarter + eighth, dotted half =
+/// half + quarter) which keeps the existing "feel" of the game while
+/// still being musically correct.
+int noteDurationMs(NoteDuration duration) {
+  switch (duration) {
+    case NoteDuration.eighth:
+      return kEighthNoteMs;
+    case NoteDuration.quarter:
+      return kQuarterNoteMs;
+    case NoteDuration.dottedQuarter:
+      return kQuarterNoteMs + kEighthNoteMs;
+    case NoteDuration.half:
+      return kHalfNoteMs;
+    case NoteDuration.dottedHalf:
+      return kHalfNoteMs + kQuarterNoteMs;
+    case NoteDuration.whole:
+      return kWholeNoteMs;
+  }
+}
 
 class LearningStage {
   const LearningStage({
@@ -42,15 +171,16 @@ class SongDefinition {
     required this.id,
     required this.title,
     required this.noteIds,
-    this.noteBeats,
-    this.eighthNoteIndices,
+    required this.noteDurations,
   });
 
   final String id;
   final String title;
   final List<String> noteIds;
-  final List<int>? noteBeats;
-  final Set<int>? eighthNoteIndices;
+
+  /// Per-note rhythmic value — single source of truth for both audio
+  /// playback and the visual representation on the staff.
+  final List<NoteDuration> noteDurations;
 }
 
 class UserSession {
@@ -1213,13 +1343,26 @@ const List<SongDefinition> kSongLibrary = [
       'B4_A',
       'A4_A',
     ],
-    noteBeats: [
-      1, 1, 1, 1, 1, 1, 2,
-      1, 1, 1, 1, 1, 1, 2,
-      1, 1, 1, 1, 1, 1, 2,
-      1, 1, 1, 1, 1, 1, 2,
-      1, 1, 1, 1, 1, 1, 2,
-      1, 1, 1, 1, 1, 1, 2,
+    noteDurations: [
+      // Each phrase ends on a half note ("...how I wonder what you are").
+      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.half,
+      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.half,
+      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.half,
+      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.half,
+      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.half,
+      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.half,
     ],
   ),
   SongDefinition(
@@ -1269,13 +1412,25 @@ const List<SongDefinition> kSongLibrary = [
       'E4_D',
       'A4_A',
     ],
-    noteBeats: [
-      1, 1, 1, 1, 1, 1, 2,
-      1, 1, 1, 1, 1, 1, 2,
-      1, 1, 1, 1, 1, 1, 2,
-      1, 1, 1, 1, 1, 1, 2,
-      1, 1, 1, 1, 1, 1, 2,
-      1, 1, 1, 1, 1, 1, 2,
+    noteDurations: [
+      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.half,
+      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.half,
+      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.half,
+      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.half,
+      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.half,
+      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.half,
     ],
   ),
   SongDefinition(
@@ -1295,25 +1450,33 @@ const List<SongDefinition> kSongLibrary = [
       'A4_A', 'E4_D', 'A4_A',
       'A4_A', 'E4_D', 'A4_A',
     ],
-    noteBeats: [
-      1, 1, 1, 1,
-      1, 1, 1, 1,
-      1, 1, 2,
-      1, 1, 2,
-      1, 1, 1, 1, 1, 1,
-      1, 1, 1, 1, 1, 1,
-      1, 1, 2,
-      1, 1, 2,
+    noteDurations: [
+      // "Frère Jacques, Frère Jacques" — 8 quarters
+      NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.quarter, NoteDuration.quarter,
+      // "Dormez-vous? Dormez-vous?" — q q h, twice
+      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.half,
+      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.half,
+      // "Sonnez les matines, sonnez les matines" — 4 eighths + 2 quarters, twice
+      NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.quarter, NoteDuration.quarter,
+      // "Ding ding dong, ding ding dong" — q q h, twice
+      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.half,
+      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.half,
     ],
-    // The two "sonnez les matines" groups begin with four eighth notes each.
-    eighthNoteIndices: {14, 15, 16, 17, 20, 21, 22, 23},
   ),
   SongDefinition(
     id: 'lightly_row',
-    title: 'Lightly Row',
+    title: 'Yonatan Hakatan',
     noteIds: [
       // Part A
-      // "Lightly row, lightly row, o'er the glassy waves we go"
+      // "Yonatan hakatan" (melody same as Lightly Row)
       'E5_E', 'C#5_A', 'C#5_A',
       'D5_A', 'B4_A', 'B4_A',
       'A4_A', 'B4_A', 'C#5_A', 'D5_A',
@@ -1335,25 +1498,78 @@ const List<SongDefinition> kSongLibrary = [
       'A4_A', 'C#5_A', 'E5_E', 'E5_E',
       'A4_A',
     ],
-    noteBeats: [
+    noteDurations: [
       // Part A
-      1, 1, 2,
-      1, 1, 2,
-      1, 1, 1, 1,
-      1, 1, 2,
-      1, 1, 2,
-      1, 1, 2,
-      1, 1, 1, 1,
-      2,
+      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.half,
+      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.half,
+      NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.half,
+      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.half,
+      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.half,
+      NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.half,
       // Part B
-      1, 1, 1, 1,
-      1, 1, 2,
-      1, 1, 1, 1,
-      1, 1, 2,
-      1, 1, 2,
-      1, 1, 2,
-      1, 1, 1, 1,
-      2,
+      NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.half,
+      NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.half,
+      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.half,
+      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.half,
+      NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.half,
+    ],
+  ),
+  SongDefinition(
+    id: 'ode_to_joy',
+    title: 'Ode to Joy',
+    // Arranged in G major so the melody starts on B (Si) — the 1st finger
+    // on the A string. Transposed up a perfect 4th from the canonical
+    // D-major version, so each phrase sits comfortably on the D and A
+    // strings using fingers 0–3.
+    noteIds: [
+      // Line 1 (measures 1-4)
+      'B4_A', 'B4_A', 'C5_A', 'D5_A',
+      'D5_A', 'C5_A', 'B4_A', 'A4_A',
+      'G4_D', 'G4_D', 'A4_A', 'B4_A',
+      'B4_A', 'A4_A', 'A4_A',
+      // Line 2 (measures 5-8)
+      'B4_A', 'B4_A', 'C5_A', 'D5_A',
+      'D5_A', 'C5_A', 'B4_A', 'A4_A',
+      'G4_D', 'G4_D', 'A4_A', 'B4_A',
+      'A4_A', 'G4_D', 'G4_D',
+    ],
+    // Faithful 4/4 rhythm: each line ends with dotted-quarter + eighth +
+    // half, the classic Ode to Joy cadence.
+    noteDurations: [
+      // M1: ♩ ♩ ♩ ♩
+      NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.quarter, NoteDuration.quarter,
+      // M2: ♩ ♩ ♩ ♩
+      NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.quarter, NoteDuration.quarter,
+      // M3: ♩ ♩ ♩ ♩
+      NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.quarter, NoteDuration.quarter,
+      // M4: ♩. ♪ 𝅗𝅥
+      NoteDuration.dottedQuarter, NoteDuration.eighth,
+      NoteDuration.half,
+      // M5: ♩ ♩ ♩ ♩
+      NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.quarter, NoteDuration.quarter,
+      // M6: ♩ ♩ ♩ ♩
+      NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.quarter, NoteDuration.quarter,
+      // M7: ♩ ♩ ♩ ♩
+      NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.quarter, NoteDuration.quarter,
+      // M8: ♩. ♪ 𝅗𝅥
+      NoteDuration.dottedQuarter, NoteDuration.eighth,
+      NoteDuration.half,
     ],
   ),
 ];
@@ -1368,6 +1584,7 @@ class GameNote {
     required this.stringIndex,
     required this.frequencyHz,
     required this.hintColor,
+    this.lowSecondFinger = false,
   });
 
   final String id;
@@ -1379,6 +1596,17 @@ class GameNote {
   final double frequencyHz;
   final Color hintColor;
 
+  /// `true` for notes that need the 2nd finger placed close to the 1st
+  /// finger (a half-step lower than its "normal" position) — e.g. C
+  /// natural on the A string in keys like G major. The touch UI splits
+  /// the finger-2 region in half: upper sub-zone = low 2, lower sub-zone
+  /// = high 2.
+  ///
+  /// For backward compatibility, the strictness only kicks in when the
+  /// target note is itself a low-2 note. High-2 targets (C#, F#)
+  /// continue to accept either sub-zone, so existing D-major songs are
+  /// unaffected.
+  final bool lowSecondFinger;
 }
 
 class _AuthResult {
@@ -3202,7 +3430,8 @@ class SongSelectionScreen extends StatelessWidget {
     final primarySong = kSongLibrary.first;
     final harmonySong = kSongLibrary[1];
     final frereSong = kSongLibrary[2];
-    final lightlyRowSong = kSongLibrary[3];
+    final yonatanSong = kSongLibrary[3];
+    final odeToJoySong = kSongLibrary[4];
     return Scaffold(
       appBar: AppBar(
         toolbarHeight: 120,
@@ -3295,12 +3524,12 @@ class SongSelectionScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 10),
                 _ModuleCard(
-                  title: lightlyRowSong.title,
-                  icon: Icons.water_rounded,
+                  title: yonatanSong.title,
+                  icon: Icons.park_rounded,
                   color: const Color(0xFFE091E8),
                   footer: _ProgressStarsRow(
                     filledCount: _displayStarsFromSectionTotal(
-                      progress.songSectionStars[lightlyRowSong.id] ?? 0,
+                      progress.songSectionStars[yonatanSong.id] ?? 0,
                     ),
                     color: const Color(0xFFE091E8),
                   ),
@@ -3308,7 +3537,31 @@ class SongSelectionScreen extends StatelessWidget {
                     Navigator.of(context).push(
                       MaterialPageRoute<void>(
                         builder: (_) => SongLearningScreen(
-                          song: lightlyRowSong,
+                          song: yonatanSong,
+                          session: session,
+                          onLogout: onLogout,
+                          onProfileUpdated: onProfileUpdated,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(height: 10),
+                _ModuleCard(
+                  title: odeToJoySong.title,
+                  icon: Icons.celebration_rounded,
+                  color: const Color(0xFFEF6C6C),
+                  footer: _ProgressStarsRow(
+                    filledCount: _displayStarsFromSectionTotal(
+                      progress.songSectionStars[odeToJoySong.id] ?? 0,
+                    ),
+                    color: const Color(0xFFEF6C6C),
+                  ),
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => SongLearningScreen(
+                          song: odeToJoySong,
                           session: session,
                           onLogout: onLogout,
                           onProfileUpdated: onProfileUpdated,
@@ -3344,13 +3597,6 @@ class ViolinGameScreen extends StatefulWidget {
   State<ViolinGameScreen> createState() => _ViolinGameScreenState();
 }
 
-@JS('Audio')
-extension type _JSAudio._(JSObject _) implements JSObject {
-  external factory _JSAudio([String src]);
-  external set volume(num value);
-  external JSPromise<JSAny?> play();
-}
-
 class _AudioPool {
   _AudioPool({this.size = 4});
 
@@ -3377,16 +3623,12 @@ class _AudioPool {
   }
 
   void _playWeb(Uint8List wavBytes, {double volume = 0.85, String? cacheKey}) {
-    try {
-      final key = cacheKey ?? '${wavBytes.length}_${wavBytes.hashCode}';
-      final dataUrl = _dataUrlCache.putIfAbsent(key, () {
-        final b64 = base64Encode(wavBytes);
-        return 'data:audio/wav;base64,$b64';
-      });
-      final audio = _JSAudio(dataUrl);
-      audio.volume = volume;
-      audio.play().toDart.catchError((_) => null);
-    } catch (_) {}
+    final key = cacheKey ?? '${wavBytes.length}_${wavBytes.hashCode}';
+    final dataUrl = _dataUrlCache.putIfAbsent(key, () {
+      final b64 = base64Encode(wavBytes);
+      return 'data:audio/wav;base64,$b64';
+    });
+    playDataUrlOnWeb(dataUrl, volume);
   }
 
   Future<void> _playNative(Uint8List wavBytes, {double volume = 0.85}) async {
@@ -3659,7 +3901,8 @@ class _ViolinGameScreenState extends State<ViolinGameScreen> {
 
     final isCorrect =
         placement.stringIndex == _currentNote.stringIndex &&
-        placement.fingerNumber == _currentNote.fingerNumber;
+        placement.fingerNumber == _currentNote.fingerNumber &&
+        (!_currentNote.lowSecondFinger || placement.lowSecondVariant);
     final stringIndex = _currentNote.stringIndex;
     _stringAttempts[stringIndex] = (_stringAttempts[stringIndex] ?? 0) + 1;
 
@@ -3948,6 +4191,7 @@ class _ViolinGameScreenState extends State<ViolinGameScreen> {
                       neckWidth: neckWidth,
                       targetFingerNumber: _currentNote.fingerNumber,
                       targetStringIndex: _currentNote.stringIndex,
+                      targetLowSecondFinger: _currentNote.lowSecondFinger,
                       showHintColors: _showHintColors,
                       hintColor: _currentNote.hintColor,
                       shakeTrigger: _neckShakeTrigger,
@@ -3983,10 +4227,6 @@ class SongLearningScreen extends StatefulWidget {
 }
 
 class _SongLearningScreenState extends State<SongLearningScreen> {
-  static const int _quarterNoteDurationMs = 620;
-  static const int _halfNoteDurationMs = 1120;
-  static const int _wholeNoteDurationMs = 2200;
-  static const int _eighthNoteDurationMs = 340;
   static const double _sectionStarAccuracyThreshold = 0.85;
   static const List<GameNote> _songNotePool = [
     GameNote(
@@ -4048,6 +4288,21 @@ class _SongLearningScreenState extends State<SongLearningScreen> {
       stringIndex: 2,
       frequencyHz: 493.88,
       hintColor: Color(0xFF7E57C2),
+    ),
+    // C natural on the A string. Same staff position as C#5 (no
+    // accidental), but the 2nd finger lands a half-step closer to the
+    // 1st finger — like on a real violin. The `lowSecondFinger: true`
+    // flag tells the touch UI to enforce that physical position.
+    GameNote(
+      id: 'C5_A',
+      letterLabel: 'C',
+      solfegeLabel: 'Do',
+      staffStep: 5,
+      fingerNumber: 2,
+      stringIndex: 2,
+      frequencyHz: 523.25,
+      hintColor: Color(0xFFFFD54F),
+      lowSecondFinger: true,
     ),
     GameNote(
       id: 'C#5_A',
@@ -4146,15 +4401,11 @@ class _SongLearningScreenState extends State<SongLearningScreen> {
       _selectedSong.noteIds.map(_noteById).toList(growable: false);
 
   GameNote get _currentNote => _songNotes[_songIndex];
-  int get _currentBeatUnits => _selectedSong.noteBeats?[_songIndex] ?? 1;
-  bool get _currentIsEighthNote =>
-      _selectedSong.eighthNoteIndices?.contains(_songIndex) ?? false;
-  int get _currentNoteDurationMs {
-    if (_currentIsEighthNote) return _eighthNoteDurationMs;
-    if (_currentBeatUnits >= 4) return _wholeNoteDurationMs;
-    if (_currentBeatUnits >= 2) return _halfNoteDurationMs;
-    return _quarterNoteDurationMs;
-  }
+
+  NoteDuration get _currentNoteDuration =>
+      _selectedSong.noteDurations[_songIndex];
+
+  int get _currentNoteDurationMs => noteDurationMs(_currentNoteDuration);
 
   bool _showHintFor(String noteId) {
     final isMastered = _mastered[noteId] ?? false;
@@ -4212,7 +4463,11 @@ class _SongLearningScreenState extends State<SongLearningScreen> {
 
     final isCorrect =
         placement.stringIndex == _currentNote.stringIndex &&
-        placement.fingerNumber == _currentNote.fingerNumber;
+        placement.fingerNumber == _currentNote.fingerNumber &&
+        // Low-2 notes (e.g. C natural on the A string) must be played
+        // with the 2nd finger close to the 1st finger. High-2 targets
+        // (C#, F#) accept either sub-zone for backward compatibility.
+        (!_currentNote.lowSecondFinger || placement.lowSecondVariant);
 
     if (isCorrect) {
       setState(() {
@@ -4580,9 +4835,7 @@ class _SongLearningScreenState extends State<SongLearningScreen> {
                                   feedbackState: _feedbackState,
                                   showHintColors: _showHintColors,
                                   hintColor: _currentNote.hintColor,
-                                  isHalfNote: _currentBeatUnits >= 2 && _currentBeatUnits < 4,
-                                  isWholeNote: _currentBeatUnits >= 4,
-                                  isEighthNote: _currentIsEighthNote,
+                                  duration: _currentNoteDuration,
                                 ),
                                 const SizedBox(height: 8),
                                 _NoteHintCard(
@@ -4623,6 +4876,7 @@ class _SongLearningScreenState extends State<SongLearningScreen> {
                           neckWidth: neckWidth,
                           targetFingerNumber: _currentNote.fingerNumber,
                           targetStringIndex: _currentNote.stringIndex,
+                          targetLowSecondFinger: _currentNote.lowSecondFinger,
                           showHintColors: _showHintColors,
                           hintColor: _currentNote.hintColor,
                           shakeTrigger: _neckShakeTrigger,
@@ -4830,18 +5084,14 @@ class _MusicStaffCard extends StatelessWidget {
     required this.feedbackState,
     required this.showHintColors,
     required this.hintColor,
-    this.isHalfNote = false,
-    this.isWholeNote = false,
-    this.isEighthNote = false,
+    this.duration = NoteDuration.quarter,
   });
 
   final GameNote note;
   final FeedbackState feedbackState;
   final bool showHintColors;
   final Color hintColor;
-  final bool isHalfNote;
-  final bool isWholeNote;
-  final bool isEighthNote;
+  final NoteDuration duration;
 
   @override
   Widget build(BuildContext context) {
@@ -4868,9 +5118,7 @@ class _MusicStaffCard extends StatelessWidget {
                 staffStep: note.staffStep,
                 showSharp: note.letterLabel.contains('#'),
                 noteColor: showHintColors ? hintColor : const Color(0xFF111111),
-                isHalfNote: isHalfNote,
-                isWholeNote: isWholeNote,
-                isEighthNote: isEighthNote,
+                durationSpec: duration.spec,
               ),
               child: const SizedBox.expand(),
             ),
@@ -4950,10 +5198,20 @@ class _NoteHintCard extends StatelessWidget {
 }
 
 class _FingerPlacement {
-  const _FingerPlacement({required this.fingerNumber, required this.stringIndex});
+  const _FingerPlacement({
+    required this.fingerNumber,
+    required this.stringIndex,
+    this.lowSecondVariant = false,
+  });
 
   final int fingerNumber;
   final int stringIndex;
+
+  /// `true` only when [fingerNumber] is 2 and the player tapped the
+  /// upper half of the finger-2 region (the low-2 spot, closer to
+  /// finger 1). Used by the correctness check for low-2 notes such as
+  /// C natural.
+  final bool lowSecondVariant;
 }
 
 class _ResolvedPlacement {
@@ -4967,6 +5225,10 @@ class _ViolinFingerGeometry {
   static const double _assumedLogicalDpi = 160;
   static const double halfSizeStringLengthMm = 285;
   static const List<int> _semitonesFromOpen = [2, 4, 5];
+  /// Semitones above the open string for the "low 2" finger placement —
+  /// the spot used for natural notes like C on the A string or F on the
+  /// D string. A half step below the regular (high) 2nd finger.
+  static const int _lowSecondSemitones = 3;
   static const double stoppedFingerSpacingScale = 0.72;
   static final List<double> fingerMm = [
     0,
@@ -5007,6 +5269,18 @@ class _ViolinFingerGeometry {
     return y.clamp(top, bottom).toDouble();
   }
 
+  /// Y-coordinate of the "low 2" finger spot — between finger 1 and the
+  /// regular (high) 2nd finger. The placement that natural C or natural
+  /// F want on a real violin.
+  static double yForLowSecondFingerOnScreen(Size size) {
+    final top = topPadding;
+    final bottom = size.height - bottomPadding;
+    final mm = _distanceFromNutForSemitone(_lowSecondSemitones) *
+        stoppedFingerSpacingScale;
+    final y = top + mmToLogicalPx(mm);
+    return y.clamp(top, bottom).toDouble();
+  }
+
   static _ResolvedPlacement resolveFromTouch(Offset local, Size size) {
     final strings = stringXs(size);
     int stringIndex = 0;
@@ -5023,26 +5297,36 @@ class _ViolinFingerGeometry {
     final bottom = size.height - bottomPadding;
     final clampedY = local.dy.clamp(top, bottom).toDouble();
     final y1 = yForFingerOnScreen(fingerNumber: 1, size: size);
+    final y2Low = yForLowSecondFingerOnScreen(size);
     final y2 = yForFingerOnScreen(fingerNumber: 2, size: size);
     final y3 = yForFingerOnScreen(fingerNumber: 3, size: size);
     final yOpen = yForFingerOnScreen(fingerNumber: 0, size: size);
 
     final int fingerNumber;
+    bool lowSecondVariant = false;
     if (clampedY < (y1 + y2) / 2) {
       fingerNumber = 1;
     } else if (clampedY < (y2 + y3) / 2) {
       fingerNumber = 2;
+      // Within the finger-2 region, the upper half (closer to finger 1)
+      // is the low-2 sub-zone; the lower half is high-2. Splitting only
+      // inside the finger-2 region keeps the boundaries with finger 1
+      // and finger 3 unchanged from the previous behavior.
+      lowSecondVariant = clampedY < (y2Low + y2) / 2;
     } else if (clampedY < (y3 + yOpen) / 2) {
       fingerNumber = 3;
     } else {
       fingerNumber = 0;
     }
-    final snappedY = yForFingerOnScreen(fingerNumber: fingerNumber, size: size);
+    final snappedY = (fingerNumber == 2 && lowSecondVariant)
+        ? y2Low
+        : yForFingerOnScreen(fingerNumber: fingerNumber, size: size);
 
     return _ResolvedPlacement(
       placement: _FingerPlacement(
         fingerNumber: fingerNumber,
         stringIndex: stringIndex,
+        lowSecondVariant: lowSecondVariant,
       ),
       marker: Offset(strings[stringIndex], snappedY),
     );
@@ -5060,6 +5344,7 @@ class _VerticalViolinNeckCard extends StatefulWidget {
     required this.hintColor,
     required this.shakeTrigger,
     required this.onPlacement,
+    this.targetLowSecondFinger = false,
   });
 
   final double neckHeight;
@@ -5070,6 +5355,7 @@ class _VerticalViolinNeckCard extends StatefulWidget {
   final Color hintColor;
   final int shakeTrigger;
   final ValueChanged<_FingerPlacement> onPlacement;
+  final bool targetLowSecondFinger;
 
   @override
   State<_VerticalViolinNeckCard> createState() => _VerticalViolinNeckCardState();
@@ -5130,6 +5416,7 @@ class _VerticalViolinNeckCardState extends State<_VerticalViolinNeckCard> {
                       targetStringIndex: widget.targetStringIndex,
                       showHintColors: widget.showHintColors,
                       hintColor: widget.hintColor,
+                      targetLowSecondFinger: widget.targetLowSecondFinger,
                     ),
                     child: const SizedBox.expand(),
                   ),
@@ -5148,17 +5435,13 @@ class _StaffPainter extends CustomPainter {
     required this.staffStep,
     required this.showSharp,
     required this.noteColor,
-    required this.isHalfNote,
-    required this.isWholeNote,
-    required this.isEighthNote,
+    required this.durationSpec,
   });
 
   final int staffStep;
   final bool showSharp;
   final Color noteColor;
-  final bool isHalfNote;
-  final bool isWholeNote;
-  final bool isEighthNote;
+  final NoteDurationSpec durationSpec;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -5325,15 +5608,27 @@ class _StaffPainter extends CustomPainter {
       width: noteHeadWidth,
       height: noteHeadHeight,
     );
-    if (isWholeNote || isHalfNote) {
+    if (durationSpec.hasOpenHead) {
       canvas.drawOval(noteHeadRect, noteStrokePaint);
     } else {
       canvas.drawOval(noteHeadRect, noteFillPaint);
     }
 
-    if (isWholeNote) {
-      // Whole notes have no stem -- drawing is complete after the head.
-    } else {
+    // Augmentation dot for dotted rhythms. Sits to the right of the note
+    // head; nudged into the adjacent space when the head is on a staff
+    // line so it doesn't visually merge with the line itself.
+    if (durationSpec.isDotted) {
+      final dotRadius = max(2.0, spacing * 0.18);
+      final dotX = noteX + noteHeadWidth * 0.5 + spacing * 0.45;
+      final isOnLine = staffStep.isEven;
+      final dotY = isOnLine ? noteY - spacing * 0.5 : noteY;
+      canvas.drawCircle(Offset(dotX, dotY), dotRadius, noteFillPaint);
+    }
+
+    if (!durationSpec.hasStem) {
+      // Whole notes have no stem — drawing is complete after the head.
+      return;
+    }
 
     final stemLength = spacing * 3.5;
     final stemPaint = Paint()
@@ -5342,7 +5637,11 @@ class _StaffPainter extends CustomPainter {
     final staffMiddleY = (staffTopY + staffBottomY) / 2;
     final stemGoesDownOnLeft = noteY < staffMiddleY;
     final rx = noteHeadWidth * 0.5;
-    final attachXOffset = isHalfNote ? rx : noteHeadWidth * 0.43;
+    // Open heads attach the stem at the edge of the oval; filled heads
+    // hide the stem's anchor inside the fill.
+    final attachXOffset =
+        durationSpec.hasOpenHead ? rx : noteHeadWidth * 0.43;
+    final flagCount = durationSpec.flagCount;
     if (stemGoesDownOnLeft) {
       final stemX = noteX - attachXOffset;
       canvas.drawLine(
@@ -5350,33 +5649,14 @@ class _StaffPainter extends CustomPainter {
         Offset(stemX, noteY + stemLength),
         stemPaint,
       );
-      if (isEighthNote) {
-        final flagPaint = Paint()
-          ..color = noteColor
-          ..style = PaintingStyle.fill;
-        final tipY = noteY + stemLength;
-        // In standard engraving, eighth-note flags are drawn on the
-        // right side of the stem for both stem directions.
-        final flagPath = Path()
-          ..moveTo(stemX, tipY)
-          ..cubicTo(
-            stemX + spacing * 0.16,
-            tipY - spacing * 0.20,
-            stemX + spacing * 0.96,
-            tipY - spacing * 0.52,
-            stemX + spacing * 0.70,
-            tipY - spacing * 1.16,
-          )
-          ..cubicTo(
-            stemX + spacing * 0.52,
-            tipY - spacing * 0.90,
-            stemX + spacing * 0.22,
-            tipY - spacing * 0.56,
-            stemX,
-            tipY - spacing * 0.36,
-          )
-          ..close();
-        canvas.drawPath(flagPath, flagPaint);
+      if (flagCount >= 1) {
+        _drawFlagsDownStem(
+          canvas: canvas,
+          stemX: stemX,
+          tipY: noteY + stemLength,
+          spacing: spacing,
+          flagCount: flagCount,
+        );
       }
     } else {
       final stemX = noteX + attachXOffset;
@@ -5385,35 +5665,91 @@ class _StaffPainter extends CustomPainter {
         Offset(stemX, noteY - stemLength),
         stemPaint,
       );
-      if (isEighthNote) {
-        final flagPaint = Paint()
-          ..color = noteColor
-          ..style = PaintingStyle.fill;
-        final tipY = noteY - stemLength;
-        final flagPath = Path()
-          ..moveTo(stemX, tipY)
-          ..cubicTo(
-            stemX + spacing * 0.14,
-            tipY + spacing * 0.20,
-            stemX + spacing * 0.98,
-            tipY + spacing * 0.52,
-            stemX + spacing * 0.70,
-            tipY + spacing * 1.16,
-          )
-          ..cubicTo(
-            stemX + spacing * 0.52,
-            tipY + spacing * 0.90,
-            stemX + spacing * 0.22,
-            tipY + spacing * 0.56,
-            stemX,
-            tipY + spacing * 0.36,
-          )
-          ..close();
-        canvas.drawPath(flagPath, flagPaint);
+      if (flagCount >= 1) {
+        _drawFlagsUpStem(
+          canvas: canvas,
+          stemX: stemX,
+          tipY: noteY - stemLength,
+          spacing: spacing,
+          flagCount: flagCount,
+        );
       }
     }
+  }
 
-    } // end of !isWholeNote stem block
+  /// Draws one or more flags on a stem that points downward (note head
+  /// above the stem tip). [flagCount] determines how many flags are
+  /// stacked — 1 = eighth, 2 = sixteenth, etc. — each subsequent flag
+  /// nudges upward by ~0.7 staff spaces along the stem.
+  void _drawFlagsDownStem({
+    required Canvas canvas,
+    required double stemX,
+    required double tipY,
+    required double spacing,
+    required int flagCount,
+  }) {
+    final flagPaint = Paint()
+      ..color = noteColor
+      ..style = PaintingStyle.fill;
+    for (int i = 0; i < flagCount; i++) {
+      final flagTipY = tipY - spacing * 0.7 * i;
+      final flagPath = Path()
+        ..moveTo(stemX, flagTipY)
+        ..cubicTo(
+          stemX + spacing * 0.16,
+          flagTipY - spacing * 0.20,
+          stemX + spacing * 0.96,
+          flagTipY - spacing * 0.52,
+          stemX + spacing * 0.70,
+          flagTipY - spacing * 1.16,
+        )
+        ..cubicTo(
+          stemX + spacing * 0.52,
+          flagTipY - spacing * 0.90,
+          stemX + spacing * 0.22,
+          flagTipY - spacing * 0.56,
+          stemX,
+          flagTipY - spacing * 0.36,
+        )
+        ..close();
+      canvas.drawPath(flagPath, flagPaint);
+    }
+  }
+
+  /// Draws one or more flags on a stem that points upward.
+  void _drawFlagsUpStem({
+    required Canvas canvas,
+    required double stemX,
+    required double tipY,
+    required double spacing,
+    required int flagCount,
+  }) {
+    final flagPaint = Paint()
+      ..color = noteColor
+      ..style = PaintingStyle.fill;
+    for (int i = 0; i < flagCount; i++) {
+      final flagTipY = tipY + spacing * 0.7 * i;
+      final flagPath = Path()
+        ..moveTo(stemX, flagTipY)
+        ..cubicTo(
+          stemX + spacing * 0.14,
+          flagTipY + spacing * 0.20,
+          stemX + spacing * 0.98,
+          flagTipY + spacing * 0.52,
+          stemX + spacing * 0.70,
+          flagTipY + spacing * 1.16,
+        )
+        ..cubicTo(
+          stemX + spacing * 0.52,
+          flagTipY + spacing * 0.90,
+          stemX + spacing * 0.22,
+          flagTipY + spacing * 0.56,
+          stemX,
+          flagTipY + spacing * 0.36,
+        )
+        ..close();
+      canvas.drawPath(flagPath, flagPaint);
+    }
   }
 
   @override
@@ -5421,9 +5757,7 @@ class _StaffPainter extends CustomPainter {
     return oldDelegate.staffStep != staffStep ||
         oldDelegate.showSharp != showSharp ||
         oldDelegate.noteColor != noteColor ||
-        oldDelegate.isHalfNote != isHalfNote ||
-        oldDelegate.isWholeNote != isWholeNote ||
-        oldDelegate.isEighthNote != isEighthNote;
+        oldDelegate.durationSpec != durationSpec;
   }
 }
 
@@ -5435,6 +5769,7 @@ class _VerticalViolinNeckPainter extends CustomPainter {
     required this.targetStringIndex,
     required this.showHintColors,
     required this.hintColor,
+    this.targetLowSecondFinger = false,
   });
 
   final Offset? marker;
@@ -5443,6 +5778,7 @@ class _VerticalViolinNeckPainter extends CustomPainter {
   final int targetStringIndex;
   final bool showHintColors;
   final Color hintColor;
+  final bool targetLowSecondFinger;
   // Approximate relative violin string gauges: G > D > A > E.
   static const List<double> _stringStrokeByIndex = [3.6, 2.7, 2.1, 1.4];
 
@@ -5510,10 +5846,12 @@ class _VerticalViolinNeckPainter extends CustomPainter {
     }
 
     if (showHintColors) {
-      final targetY = _ViolinFingerGeometry.yForFingerOnScreen(
-        fingerNumber: targetFingerNumber,
-        size: size,
-      );
+      final targetY = (targetFingerNumber == 2 && targetLowSecondFinger)
+          ? _ViolinFingerGeometry.yForLowSecondFingerOnScreen(size)
+          : _ViolinFingerGeometry.yForFingerOnScreen(
+              fingerNumber: targetFingerNumber,
+              size: size,
+            );
       final targetStringX = strings[targetStringIndex];
       canvas.drawCircle(
         Offset(targetStringX, targetY),
@@ -5553,6 +5891,7 @@ class _VerticalViolinNeckPainter extends CustomPainter {
         oldDelegate.targetFingerNumber != targetFingerNumber ||
         oldDelegate.targetStringIndex != targetStringIndex ||
         oldDelegate.showHintColors != showHintColors ||
-        oldDelegate.hintColor != hintColor;
+        oldDelegate.hintColor != hintColor ||
+        oldDelegate.targetLowSecondFinger != targetLowSecondFinger;
   }
 }

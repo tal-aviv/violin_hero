@@ -31,8 +31,17 @@ enum StageMode { learnSingleString, mixedStrings }
 
 /// Standard note durations supported by the rhythm engine.
 ///
+/// Each value covers a rhythmic *slot* — either a sounding pitch or a
+/// silence (rest) of the same length. Rest variants are suffixed with
+/// `Rest` and carry [NoteDurationSpec.isRest] = true. The song-learning
+/// screen uses that flag to:
+///   • render a rest glyph instead of a note head,
+///   • skip audio playback for the slot,
+///   • auto-advance after the elapsed silence (no tap required).
+///
 /// To add a new rhythm (sixteenth, dotted eighth, triplet, …):
-///   1. Add a value to this enum.
+///   1. Add a value to this enum (and its rest counterpart if it can be
+///      a rest).
 ///   2. Add a [NoteDurationSpec] entry to [kNoteDurationSpecs] describing
 ///      its rhythmic value and how it should be drawn on the staff.
 ///   3. Add a branch to [noteDurationMs] mapping it to playback ms.
@@ -40,12 +49,24 @@ enum StageMode { learnSingleString, mixedStrings }
 /// Everything else (audio playback, staff rendering, beat counting) reads
 /// from those tables, so a new rhythm requires no scattered `if` updates.
 enum NoteDuration {
+  sixteenth,
   eighth,
+  dottedEighth,
   quarter,
   dottedQuarter,
   half,
   dottedHalf,
   whole,
+  // Rests — sit silently for the corresponding duration. The song
+  // engine auto-advances through them, so the student isn't asked to
+  // tap during silence.
+  sixteenthRest,
+  eighthRest,
+  quarterRest,
+  dottedQuarterRest,
+  halfRest,
+  dottedHalfRest,
+  wholeRest,
 }
 
 /// Visual + rhythmic properties of a [NoteDuration]. The renderer queries
@@ -58,31 +79,60 @@ class NoteDurationSpec {
     required this.hasStem,
     required this.flagCount,
     required this.isDotted,
+    this.isRest = false,
+    this.restGlyph,
   });
 
-  /// Length of the note expressed in quarter-note beats.
+  /// Length of the slot expressed in quarter-note beats.
   final double beatUnits;
 
   /// `true` for half / dotted-half / whole — drawn as an outlined oval.
+  /// Ignored for rests.
   final bool hasOpenHead;
 
-  /// `false` only for whole notes (no stem).
+  /// `false` only for whole notes (no stem). Ignored for rests.
   final bool hasStem;
 
   /// 0 = none, 1 = eighth flag, 2 = sixteenth (reserved for future use).
+  /// Ignored for rests.
   final int flagCount;
 
-  /// `true` for dotted rhythms — the painter renders an augmentation dot.
+  /// `true` for dotted rhythms — the painter renders an augmentation dot
+  /// after the note head (or rest glyph).
   final bool isDotted;
+
+  /// `true` for rest slots. The painter draws [restGlyph] instead of a
+  /// pitched note, the audio engine plays nothing, and the song-learning
+  /// screen ignores tap input until the rest elapses.
+  final bool isRest;
+
+  /// Unicode glyph used to render the rest on the staff. Only meaningful
+  /// when [isRest] is true. Drawn via TextPainter, same way the treble
+  /// clef glyph is drawn.
+  final String? restGlyph;
 }
 
 const Map<NoteDuration, NoteDurationSpec> kNoteDurationSpecs = {
+  NoteDuration.sixteenth: NoteDurationSpec(
+    beatUnits: 0.25,
+    hasOpenHead: false,
+    hasStem: true,
+    flagCount: 2,
+    isDotted: false,
+  ),
   NoteDuration.eighth: NoteDurationSpec(
     beatUnits: 0.5,
     hasOpenHead: false,
     hasStem: true,
     flagCount: 1,
     isDotted: false,
+  ),
+  NoteDuration.dottedEighth: NoteDurationSpec(
+    beatUnits: 0.75,
+    hasOpenHead: false,
+    hasStem: true,
+    flagCount: 1,
+    isDotted: true,
   ),
   NoteDuration.quarter: NoteDurationSpec(
     beatUnits: 1.0,
@@ -119,6 +169,74 @@ const Map<NoteDuration, NoteDurationSpec> kNoteDurationSpecs = {
     flagCount: 0,
     isDotted: false,
   ),
+  // Rest slots. `restGlyph` uses the SMuFL/Unicode musical-symbol code
+  // points so the painter can render them with the same TextPainter
+  // pipeline used for the treble clef. Dotted rests reuse the base
+  // glyph and add an augmentation dot via the existing `isDotted`
+  // rendering branch.
+  NoteDuration.sixteenthRest: NoteDurationSpec(
+    beatUnits: 0.25,
+    hasOpenHead: false,
+    hasStem: false,
+    flagCount: 0,
+    isDotted: false,
+    isRest: true,
+    restGlyph: '\u{1D13F}', // 𝄿 sixteenth rest
+  ),
+  NoteDuration.eighthRest: NoteDurationSpec(
+    beatUnits: 0.5,
+    hasOpenHead: false,
+    hasStem: false,
+    flagCount: 0,
+    isDotted: false,
+    isRest: true,
+    restGlyph: '\u{1D13E}', // 𝄾 eighth rest
+  ),
+  NoteDuration.quarterRest: NoteDurationSpec(
+    beatUnits: 1.0,
+    hasOpenHead: false,
+    hasStem: false,
+    flagCount: 0,
+    isDotted: false,
+    isRest: true,
+    restGlyph: '\u{1D13D}', // 𝄽 quarter rest
+  ),
+  NoteDuration.dottedQuarterRest: NoteDurationSpec(
+    beatUnits: 1.5,
+    hasOpenHead: false,
+    hasStem: false,
+    flagCount: 0,
+    isDotted: true,
+    isRest: true,
+    restGlyph: '\u{1D13D}', // 𝄽 quarter rest + augmentation dot
+  ),
+  NoteDuration.halfRest: NoteDurationSpec(
+    beatUnits: 2.0,
+    hasOpenHead: false,
+    hasStem: false,
+    flagCount: 0,
+    isDotted: false,
+    isRest: true,
+    restGlyph: '\u{1D13C}', // 𝄼 half rest
+  ),
+  NoteDuration.dottedHalfRest: NoteDurationSpec(
+    beatUnits: 3.0,
+    hasOpenHead: false,
+    hasStem: false,
+    flagCount: 0,
+    isDotted: true,
+    isRest: true,
+    restGlyph: '\u{1D13C}', // 𝄼 half rest + augmentation dot
+  ),
+  NoteDuration.wholeRest: NoteDurationSpec(
+    beatUnits: 4.0,
+    hasOpenHead: false,
+    hasStem: false,
+    flagCount: 0,
+    isDotted: false,
+    isRest: true,
+    restGlyph: '\u{1D13B}', // 𝄻 whole rest
+  ),
 };
 
 extension NoteDurationStyle on NoteDuration {
@@ -127,29 +245,44 @@ extension NoteDurationStyle on NoteDuration {
 
 /// Base millisecond durations used by [noteDurationMs]. Tuned for a
 /// learning experience that gives kids time to react on shorter notes,
-/// so these aren't strict 2:1 ratios.
+/// so these aren't strict 2:1 ratios — each step up roughly doubles
+/// minus ~10–15%, which keeps shorter values from feeling punishingly
+/// fast.
+const int kSixteenthNoteMs = 200;
 const int kEighthNoteMs = 340;
 const int kQuarterNoteMs = 620;
 const int kHalfNoteMs = 1120;
 const int kWholeNoteMs = 2200;
 
-/// Audio playback duration for each [NoteDuration]. Dotted values are
-/// derived additively (dotted quarter = quarter + eighth, dotted half =
-/// half + quarter) which keeps the existing "feel" of the game while
-/// still being musically correct.
+/// Playback (or silent-wait, for rests) duration in ms for each
+/// [NoteDuration]. Dotted values are derived additively (dotted quarter
+/// = quarter + eighth, dotted half = half + quarter, dotted eighth =
+/// eighth + sixteenth) which keeps the existing "feel" of the game
+/// while still being musically correct.
 int noteDurationMs(NoteDuration duration) {
   switch (duration) {
+    case NoteDuration.sixteenth:
+    case NoteDuration.sixteenthRest:
+      return kSixteenthNoteMs;
     case NoteDuration.eighth:
+    case NoteDuration.eighthRest:
       return kEighthNoteMs;
+    case NoteDuration.dottedEighth:
+      return kEighthNoteMs + kSixteenthNoteMs;
     case NoteDuration.quarter:
+    case NoteDuration.quarterRest:
       return kQuarterNoteMs;
     case NoteDuration.dottedQuarter:
+    case NoteDuration.dottedQuarterRest:
       return kQuarterNoteMs + kEighthNoteMs;
     case NoteDuration.half:
+    case NoteDuration.halfRest:
       return kHalfNoteMs;
     case NoteDuration.dottedHalf:
+    case NoteDuration.dottedHalfRest:
       return kHalfNoteMs + kQuarterNoteMs;
     case NoteDuration.whole:
+    case NoteDuration.wholeRest:
       return kWholeNoteMs;
   }
 }
@@ -166,21 +299,69 @@ class LearningStage {
   final StageMode mode;
 }
 
+/// Controls who can see a song in the song-selection list.
+///
+/// `public` — visible to every signed-in user. The default for legacy
+/// songs and any song that's been promoted out of the draft library.
+///
+/// `admin` — visible only to accounts whose username appears in
+/// [kAdminUsernames]. Used as a staging library where new songs (e.g.
+/// the rest of Suzuki Book 1) can be authored, played, and verified
+/// before being released to the general player base.
+enum SongVisibility { public, admin }
+
+/// Lowercased usernames that can see admin-only ([SongVisibility.admin])
+/// songs. Edit this set to grant additional accounts access to the
+/// staging library.
+///
+/// This is *not* a security boundary — the list ships in the client
+/// bundle and anyone inspecting the JS could read it. Its purpose is
+/// purely product-level: hide draft / unfinished songs from the regular
+/// player base while we iterate.
+const Set<String> kAdminUsernames = {'admin'};
+
+bool isAdminUser(UserSession? session) {
+  if (session == null) return false;
+  return kAdminUsernames.contains(session.username.trim().toLowerCase());
+}
+
 class SongDefinition {
   const SongDefinition({
     required this.id,
     required this.title,
     required this.noteIds,
     required this.noteDurations,
+    this.icon = Icons.music_note_rounded,
+    this.color = const Color(0xFF4FB38E),
+    this.visibility = SongVisibility.public,
   });
 
   final String id;
   final String title;
+
+  /// Parallel to [noteDurations]. For *rest* slots (where the matching
+  /// duration's `spec.isRest` is true), the entry is the empty string —
+  /// no pitch is associated with the slot. The runtime never looks up a
+  /// note by an empty id; instead it routes rest slots through the
+  /// silent auto-advance path.
   final List<String> noteIds;
 
-  /// Per-note rhythmic value — single source of truth for both audio
-  /// playback and the visual representation on the staff.
+  /// Per-slot rhythmic value — single source of truth for both audio
+  /// playback and the visual representation on the staff. Rest slots
+  /// use the rest variants from [NoteDuration].
   final List<NoteDuration> noteDurations;
+
+  /// Icon shown on the song-selection card. Each song can have its own
+  /// visual identity without the selection screen needing per-song
+  /// hardcoding.
+  final IconData icon;
+
+  /// Accent color for the song-selection card and the progress stars.
+  final Color color;
+
+  /// Whether the song is shown to every player or only to admin
+  /// accounts. See [SongVisibility].
+  final SongVisibility visibility;
 }
 
 class UserSession {
@@ -1299,6 +1480,8 @@ const List<SongDefinition> kSongLibrary = [
   SongDefinition(
     id: 'twinkle_la',
     title: 'Twinkle Twinkle Little Star',
+    icon: Icons.star_rounded,
+    color: Color(0xFF4FB38E),
     noteIds: [
       'A4_A',
       'A4_A',
@@ -1368,6 +1551,8 @@ const List<SongDefinition> kSongLibrary = [
   SongDefinition(
     id: 'twinkle_harmony_vln2',
     title: 'Twinkle Harmony',
+    icon: Icons.stars_rounded,
+    color: Color(0xFF5D8BFF),
     noteIds: [
       'A4_A',
       'A4_A',
@@ -1436,6 +1621,8 @@ const List<SongDefinition> kSongLibrary = [
   SongDefinition(
     id: 'frere_jacques',
     title: 'Frère Jacques',
+    icon: Icons.notifications_rounded,
+    color: Color(0xFFFFB300),
     noteIds: [
       // Frere Jacques, Frere Jacques
       'A4_A', 'B4_A', 'C#5_A', 'A4_A',
@@ -1474,6 +1661,8 @@ const List<SongDefinition> kSongLibrary = [
   SongDefinition(
     id: 'lightly_row',
     title: 'Yonatan Hakatan',
+    icon: Icons.park_rounded,
+    color: Color(0xFFE091E8),
     noteIds: [
       // Part A
       // "Yonatan hakatan" (melody same as Lightly Row)
@@ -1527,6 +1716,8 @@ const List<SongDefinition> kSongLibrary = [
   SongDefinition(
     id: 'ode_to_joy',
     title: 'Ode to Joy',
+    icon: Icons.celebration_rounded,
+    color: Color(0xFFEF6C6C),
     // Arranged in G major so the melody starts on B (Si) — the 1st finger
     // on the A string. Transposed up a perfect 4th from the canonical
     // D-major version, so each phrase sits comfortably on the D and A
@@ -1569,6 +1760,215 @@ const List<SongDefinition> kSongLibrary = [
       NoteDuration.quarter, NoteDuration.quarter,
       // M8: ♩. ♪ 𝅗𝅥
       NoteDuration.dottedQuarter, NoteDuration.eighth,
+      NoteDuration.half,
+    ],
+  ),
+  SongDefinition(
+    id: 'mississippi_reel',
+    title: 'Mississippi Reel',
+    // Stacked horizontal wavy lines — reads as a flowing river rather
+    // than the cresting `waves_rounded` (which feels more ocean-like).
+    icon: Icons.water_rounded,
+    color: Color(0xFF8D6E63),
+    // First half (measures 1–4) of an American fiddle reel in D major,
+    // 4/4. Functions as a string-position study disguised as a tune:
+    // M1–M3 each open with three descending four-note sixteenth-note
+    // scale fragments and resolve to a beamed eighth-note pair. M4
+    // has one sixteenth fragment followed by a six-eighth cadence
+    // outlining the D-major arpeggio. Across the four bars the
+    // descending run walks through different fingering positions:
+    //   • M1 (= M3): A-string descent  D5–C#5–B4–A4   (3-2-1-0)
+    //   • M2:        D-string descent  G4–F#4–E4–D4   (3-2-1-0)
+    //   • M4:        D-string turn     E4–G4–F#4–E4   (1-3-2-1)
+    // Range: D4 → F#5, spans all three upper strings (D / A / E).
+    // No low-2 needed.
+    noteIds: [
+      // ── M1 ── A-string descending sixteenth-note scale × 3,
+      //          then octave drop D5 (A) → D4 (D) in eighths
+      'D5_A', 'C#5_A', 'B4_A', 'A4_A',
+      'D5_A', 'C#5_A', 'B4_A', 'A4_A',
+      'D5_A', 'C#5_A', 'B4_A', 'A4_A',
+      'D5_A', 'D4_D',
+      // ── M2 ── D-string descending sixteenth-note scale × 3,
+      //          then two open-A eighths
+      'G4_D', 'F#4_D', 'E4_D', 'D4_D',
+      'G4_D', 'F#4_D', 'E4_D', 'D4_D',
+      'G4_D', 'F#4_D', 'E4_D', 'D4_D',
+      'A4_A', 'A4_A',
+      // ── M3 ── exact repeat of M1
+      'D5_A', 'C#5_A', 'B4_A', 'A4_A',
+      'D5_A', 'C#5_A', 'B4_A', 'A4_A',
+      'D5_A', 'C#5_A', 'B4_A', 'A4_A',
+      'D5_A', 'D4_D',
+      // ── M4 ── one D-string turn (E G F# E) in sixteenths, then
+      //          six eighths: two open-A pickups, a D-string D-F#-D
+      //          arpeggio figure, and a final landing on open A
+      'E4_D', 'G4_D', 'F#4_D', 'E4_D',
+      'A4_A', 'A4_A',
+      'D4_D', 'F#4_D',
+      'D4_D', 'A4_A',
+    ],
+    noteDurations: [
+      // M1: 12 sixteenths + 2 eighths
+      NoteDuration.sixteenth, NoteDuration.sixteenth,
+      NoteDuration.sixteenth, NoteDuration.sixteenth,
+      NoteDuration.sixteenth, NoteDuration.sixteenth,
+      NoteDuration.sixteenth, NoteDuration.sixteenth,
+      NoteDuration.sixteenth, NoteDuration.sixteenth,
+      NoteDuration.sixteenth, NoteDuration.sixteenth,
+      NoteDuration.eighth, NoteDuration.eighth,
+      // M2: 12 sixteenths + 2 eighths
+      NoteDuration.sixteenth, NoteDuration.sixteenth,
+      NoteDuration.sixteenth, NoteDuration.sixteenth,
+      NoteDuration.sixteenth, NoteDuration.sixteenth,
+      NoteDuration.sixteenth, NoteDuration.sixteenth,
+      NoteDuration.sixteenth, NoteDuration.sixteenth,
+      NoteDuration.sixteenth, NoteDuration.sixteenth,
+      NoteDuration.eighth, NoteDuration.eighth,
+      // M3: 12 sixteenths + 2 eighths (same shape as M1)
+      NoteDuration.sixteenth, NoteDuration.sixteenth,
+      NoteDuration.sixteenth, NoteDuration.sixteenth,
+      NoteDuration.sixteenth, NoteDuration.sixteenth,
+      NoteDuration.sixteenth, NoteDuration.sixteenth,
+      NoteDuration.sixteenth, NoteDuration.sixteenth,
+      NoteDuration.sixteenth, NoteDuration.sixteenth,
+      NoteDuration.eighth, NoteDuration.eighth,
+      // M4: 4 sixteenths + 6 eighths (cadence)
+      NoteDuration.sixteenth, NoteDuration.sixteenth,
+      NoteDuration.sixteenth, NoteDuration.sixteenth,
+      NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.eighth,
+    ],
+  ),
+  // ─────────────────────────────────────────────────────────────────
+  // ADMIN-ONLY DRAFT LIBRARY
+  // ─────────────────────────────────────────────────────────────────
+  // Songs with `visibility: SongVisibility.admin` are hidden from
+  // regular users and only appear for accounts in `kAdminUsernames`.
+  // Use this section to author / verify new songs (e.g. the rest of
+  // Suzuki Book 1) before promoting them to `SongVisibility.public`.
+  //
+  // To promote a song to the public library: change its `visibility`
+  // to `SongVisibility.public` (or just remove the field — public is
+  // the default). No other code changes needed.
+  SongDefinition(
+    id: 'song_of_the_wind',
+    title: 'Song of the Wind',
+    icon: Icons.air_rounded,
+    color: Color(0xFF26A69A),
+    visibility: SongVisibility.admin,
+    // German folk song ("Volkslied" / "Chanson du Vent" / "Canción del
+    // Viento") — public domain. Suzuki Violin Book 1 places it after
+    // the Twinkle variations and Lightly Row. Encoded in A major, 2/4,
+    // entirely on the E string, using fingers 0–3:
+    //   • 0 = open E (E5)
+    //   • 1 = F#5 (high 1)
+    //   • 2 = G#5 (high 2)
+    //   • 3 = A5
+    //
+    // ⚠️ NOTATION READING — the rhythm in measures 7–12 was inferred
+    // from fingering markings rather than read precisely from the
+    // source image. If a phrase feels off, those measures are the
+    // most likely culprits and easy to tune in isolation.
+    noteIds: [
+      // L1.M1: "0 1 2 3" — ascending E string scale
+      'E5_E', 'F#5_E', 'G#5_E', 'A5_E',
+      // L1.M2: ascending again (the "0" label leaves the rest implied
+      // since the phrase stays on string I)
+      'E5_E', 'F#5_E', 'G#5_E', 'A5_E',
+      // L1.M3: "1 3 3 1" — finger-1-and-finger-3 leap pattern
+      'F#5_E', 'A5_E', 'A5_E', 'F#5_E',
+      // L1.M4: "0" + quarter rest
+      'E5_E', '',
+      // L2.M1: leap pattern again ("1 3 3 1")
+      'F#5_E', 'A5_E', 'A5_E', 'F#5_E',
+      // L2.M2: open E + quarter rest
+      'E5_E', '',
+      // L2.M3: "0 3" — alternating 0 and 3 (E and A) — reading as 4
+      // eighths to keep the wind-fluttering feel
+      'E5_E', 'A5_E', 'E5_E', 'A5_E',
+      // L2.M4: "3 2" — alternating 3 and 2 (A and G#)
+      'A5_E', 'G#5_E', 'A5_E', 'G#5_E',
+      // L3.M1: "0 2 0" — E G# E
+      'E5_E', 'G#5_E', 'E5_E',
+      // L3.M2: "0 3" — open E to A, with downbow
+      'E5_E', 'A5_E',
+      // L3.M3: "3 2" — A down to G#
+      'A5_E', 'G#5_E',
+      // L3.M4: "2 1 0" + rest — descending cadence to open E, brief
+      // silence at the end
+      'G#5_E', 'F#5_E', 'E5_E', '',
+    ],
+    noteDurations: [
+      // L1.M1: 4 eighths
+      NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.eighth,
+      // L1.M2: 4 eighths
+      NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.eighth,
+      // L1.M3: 4 eighths (leap pattern)
+      NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.eighth,
+      // L1.M4: quarter + quarter rest
+      NoteDuration.quarter, NoteDuration.quarterRest,
+      // L2.M1: 4 eighths (leap pattern)
+      NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.eighth,
+      // L2.M2: quarter + quarter rest
+      NoteDuration.quarter, NoteDuration.quarterRest,
+      // L2.M3: 4 eighths
+      NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.eighth,
+      // L2.M4: 4 eighths
+      NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.eighth,
+      // L3.M1: quarter + 2 eighths (best guess for "0 2 0" rhythm)
+      NoteDuration.quarter, NoteDuration.eighth, NoteDuration.eighth,
+      // L3.M2: 2 quarters
+      NoteDuration.quarter, NoteDuration.quarter,
+      // L3.M3: 2 quarters
+      NoteDuration.quarter, NoteDuration.quarter,
+      // L3.M4: 3 eighths + 8th rest (final cadence + breathe)
+      NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.eighthRest,
+    ],
+  ),
+  SongDefinition(
+    id: 'hot_cross_buns_test',
+    title: '[Test] Hot Cross Buns',
+    icon: Icons.science_rounded,
+    color: Color(0xFFFF8A65),
+    visibility: SongVisibility.admin,
+    // English nursery rhyme, c. 1733 — public domain. Used here as
+    // an end-to-end smoke test for the rest-support pipeline:
+    //   • Each phrase ends on a quarter rest → silent auto-advance.
+    //   • The "one a penny, two a penny" measure uses eighth notes →
+    //     stacked-flag rendering.
+    //   • The final phrase ends on a half note → a sounding hold.
+    // In D major; range D5 → F#5, all on the A and E strings using
+    // open / 1st / 2nd fingers (no low-2 needed).
+    noteIds: [
+      // M1: "Hot cross buns" + rest
+      'F#5_E', 'E5_E', 'D5_A', '',
+      // M2: "Hot cross buns" + rest
+      'F#5_E', 'E5_E', 'D5_A', '',
+      // M3: "One a penny, two a penny" — 8 eighths
+      'D5_A', 'D5_A', 'D5_A', 'D5_A',
+      'E5_E', 'E5_E', 'E5_E', 'E5_E',
+      // M4: "Hot cross buns" — final phrase, half note ending
+      'F#5_E', 'E5_E', 'D5_A',
+    ],
+    noteDurations: [
+      NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.quarter, NoteDuration.quarterRest,
+      NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.quarter, NoteDuration.quarterRest,
+      NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.quarter, NoteDuration.quarter,
       NoteDuration.half,
     ],
   ),
@@ -2412,6 +2812,7 @@ class _ModuleCard extends StatelessWidget {
     required this.color,
     this.onTap,
     this.footer,
+    this.isDraft = false,
   });
 
   final String title;
@@ -2419,6 +2820,11 @@ class _ModuleCard extends StatelessWidget {
   final Color color;
   final VoidCallback? onTap;
   final Widget? footer;
+
+  /// When true, the card shows a small "DRAFT" pill next to the title.
+  /// Used by the admin-only library so the admin user can tell at a
+  /// glance which songs are still hidden from regular players.
+  final bool isDraft;
 
   @override
   Widget build(BuildContext context) {
@@ -2446,9 +2852,44 @@ class _ModuleCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      title,
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            title,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                        if (isDraft) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFE0B2),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: const Color(0xFFFB8C00),
+                                width: 1,
+                              ),
+                            ),
+                            child: const Text(
+                              'DRAFT',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w900,
+                                color: Color(0xFFE65100),
+                                letterSpacing: 0.6,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                     if (footer != null) ...[
                       const SizedBox(height: 6),
@@ -3427,11 +3868,17 @@ class SongSelectionScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final primarySong = kSongLibrary.first;
-    final harmonySong = kSongLibrary[1];
-    final frereSong = kSongLibrary[2];
-    final yonatanSong = kSongLibrary[3];
-    final odeToJoySong = kSongLibrary[4];
+    // Filter the library by visibility — admin-only songs are hidden
+    // from regular users, but admin accounts see them with a DRAFT
+    // badge so they're easy to spot.
+    final adminSession = isAdminUser(session);
+    final visibleSongs = kSongLibrary
+        .where(
+          (song) =>
+              song.visibility == SongVisibility.public || adminSession,
+        )
+        .toList(growable: false);
+
     return Scaffold(
       appBar: AppBar(
         toolbarHeight: 120,
@@ -3451,125 +3898,35 @@ class SongSelectionScreen extends StatelessWidget {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _ModuleCard(
-                  title: primarySong.title,
-                  icon: Icons.star_rounded,
-                  color: const Color(0xFF4FB38E),
-                  footer: _ProgressStarsRow(
-                    filledCount: _displayStarsFromSectionTotal(
-                      progress.songSectionStars[primarySong.id] ?? 0,
-                    ),
-                    color: const Color(0xFF4FB38E),
-                  ),
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => SongLearningScreen(
-                          song: primarySong,
-                          session: session,
-                          onLogout: onLogout,
-                          onProfileUpdated: onProfileUpdated,
-                        ),
+                for (int i = 0; i < visibleSongs.length; i++) ...[
+                  if (i > 0) const SizedBox(height: 10),
+                  _ModuleCard(
+                    title: visibleSongs[i].title,
+                    icon: visibleSongs[i].icon,
+                    color: visibleSongs[i].color,
+                    isDraft:
+                        visibleSongs[i].visibility == SongVisibility.admin,
+                    footer: _ProgressStarsRow(
+                      filledCount: _displayStarsFromSectionTotal(
+                        progress.songSectionStars[visibleSongs[i].id] ?? 0,
                       ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 10),
-                _ModuleCard(
-                  title: harmonySong.title,
-                  icon: Icons.stars_rounded,
-                  color: const Color(0xFF5D8BFF),
-                  footer: _ProgressStarsRow(
-                    filledCount: _displayStarsFromSectionTotal(
-                      progress.songSectionStars[harmonySong.id] ?? 0,
+                      color: visibleSongs[i].color,
                     ),
-                    color: const Color(0xFF5D8BFF),
-                  ),
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => SongLearningScreen(
-                          song: harmonySong,
-                          session: session,
-                          onLogout: onLogout,
-                          onProfileUpdated: onProfileUpdated,
+                    onTap: () {
+                      final song = visibleSongs[i];
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => SongLearningScreen(
+                            song: song,
+                            session: session,
+                            onLogout: onLogout,
+                            onProfileUpdated: onProfileUpdated,
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 10),
-                _ModuleCard(
-                  title: frereSong.title,
-                  icon: Icons.notifications_rounded,
-                  color: const Color(0xFFFFB300),
-                  footer: _ProgressStarsRow(
-                    filledCount: _displayStarsFromSectionTotal(
-                      progress.songSectionStars[frereSong.id] ?? 0,
-                    ),
-                    color: const Color(0xFFFFB300),
+                      );
+                    },
                   ),
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => SongLearningScreen(
-                          song: frereSong,
-                          session: session,
-                          onLogout: onLogout,
-                          onProfileUpdated: onProfileUpdated,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 10),
-                _ModuleCard(
-                  title: yonatanSong.title,
-                  icon: Icons.park_rounded,
-                  color: const Color(0xFFE091E8),
-                  footer: _ProgressStarsRow(
-                    filledCount: _displayStarsFromSectionTotal(
-                      progress.songSectionStars[yonatanSong.id] ?? 0,
-                    ),
-                    color: const Color(0xFFE091E8),
-                  ),
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => SongLearningScreen(
-                          song: yonatanSong,
-                          session: session,
-                          onLogout: onLogout,
-                          onProfileUpdated: onProfileUpdated,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 10),
-                _ModuleCard(
-                  title: odeToJoySong.title,
-                  icon: Icons.celebration_rounded,
-                  color: const Color(0xFFEF6C6C),
-                  footer: _ProgressStarsRow(
-                    filledCount: _displayStarsFromSectionTotal(
-                      progress.songSectionStars[odeToJoySong.id] ?? 0,
-                    ),
-                    color: const Color(0xFFEF6C6C),
-                  ),
-                  onTap: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => SongLearningScreen(
-                          song: odeToJoySong,
-                          session: session,
-                          onLogout: onLogout,
-                          onProfileUpdated: onProfileUpdated,
-                        ),
-                      ),
-                    );
-                  },
-                ),
+                ],
               ],
             );
           },
@@ -4344,6 +4701,29 @@ class _SongLearningScreenState extends State<SongLearningScreen> {
       frequencyHz: 739.99,
       hintColor: Color(0xFFFF7043),
     ),
+    // G# / A on the E string — needed for any A-major piece (e.g.
+    // Suzuki "Song of the Wind"). G# is the high-2 finger position on
+    // the E string, A is the 3rd finger.
+    GameNote(
+      id: 'G#5_E',
+      letterLabel: 'G#',
+      solfegeLabel: 'Sol#',
+      staffStep: 9,
+      fingerNumber: 2,
+      stringIndex: 3,
+      frequencyHz: 830.61,
+      hintColor: Color(0xFFAB47BC),
+    ),
+    GameNote(
+      id: 'A5_E',
+      letterLabel: 'A',
+      solfegeLabel: 'La',
+      staffStep: 10,
+      fingerNumber: 3,
+      stringIndex: 3,
+      frequencyHz: 880.00,
+      hintColor: Color(0xFFFFB300),
+    ),
   ];
 
   static const int _mistakesBeforeHintReturns = 2;
@@ -4385,6 +4765,11 @@ class _SongLearningScreenState extends State<SongLearningScreen> {
     super.initState();
     _audioPool = _AudioPool()..init();
     _selectedSong = widget.song;
+    // If the song happens to begin with a rest, the player can't act
+    // on it — schedule the silent auto-advance after the first frame.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scheduleAutoAdvanceIfRest();
+    });
   }
 
   @override
@@ -4397,15 +4782,26 @@ class _SongLearningScreenState extends State<SongLearningScreen> {
     return _songNotePool.firstWhere((note) => note.id == id);
   }
 
-  List<GameNote> get _songNotes =>
-      _selectedSong.noteIds.map(_noteById).toList(growable: false);
+  /// Per-slot resolved notes. Rest slots map to `null` — there's no
+  /// pitched note associated with a rest. Indexing parallels
+  /// [SongDefinition.noteDurations].
+  List<GameNote?> get _songNotes => _selectedSong.noteIds
+      .map<GameNote?>((id) => id.isEmpty ? null : _noteById(id))
+      .toList(growable: false);
 
-  GameNote get _currentNote => _songNotes[_songIndex];
+  /// `null` while the current slot is a rest. UI code should branch on
+  /// this — the violin neck is disabled, the hint card is hidden, and
+  /// the staff card draws a rest glyph instead of a note head.
+  GameNote? get _currentNote => _songNotes[_songIndex];
 
   NoteDuration get _currentNoteDuration =>
       _selectedSong.noteDurations[_songIndex];
 
   int get _currentNoteDurationMs => noteDurationMs(_currentNoteDuration);
+
+  /// `true` when the current slot is a rest. Centralized so the audio,
+  /// hit-test, and rendering branches all check the same condition.
+  bool get _isCurrentRest => _currentNoteDuration.spec.isRest;
 
   bool _showHintFor(String noteId) {
     final isMastered = _mastered[noteId] ?? false;
@@ -4413,9 +4809,67 @@ class _SongLearningScreenState extends State<SongLearningScreen> {
     return !isMastered || !hideHint;
   }
 
-  bool get _notesVisibleInUi =>
-      !_isByHeartMode || _byHeartHintNoteId == _currentNote.id;
-  bool get _showHintColors => _notesVisibleInUi && _showHintFor(_currentNote.id);
+  bool get _notesVisibleInUi {
+    final note = _currentNote;
+    if (note == null) {
+      // During a rest there's no pitched note to "play by heart"; the
+      // staff still shows the rest glyph so the player keeps their place.
+      return true;
+    }
+    return !_isByHeartMode || _byHeartHintNoteId == note.id;
+  }
+
+  bool get _showHintColors {
+    final note = _currentNote;
+    if (note == null) return false;
+    return _notesVisibleInUi && _showHintFor(note.id);
+  }
+
+  /// Auto-advances the song through any rest slots without requiring
+  /// player input. Called from [initState] (covers songs that start on
+  /// a rest), after every successful note advance, and after a
+  /// play-mode reset. Safe to call when the current slot is *not* a
+  /// rest — it's a no-op in that case.
+  void _scheduleAutoAdvanceIfRest() {
+    if (!mounted || !_isCurrentRest || _isTransitioning) return;
+    setState(() {
+      _isTransitioning = true;
+    });
+    final restDurationMs = _currentNoteDurationMs;
+    final indexAtSchedule = _songIndex;
+    Future<void>.delayed(Duration(milliseconds: restDurationMs), () {
+      if (!mounted) return;
+      // Bail if state shifted under us (mode toggle, song reset, etc.).
+      if (_songIndex != indexAtSchedule) return;
+      _completeRestAdvance();
+    });
+  }
+
+  /// Silent counterpart to the post-correct-tap advancement: bumps the
+  /// song index forward (or completes the song) without awarding stars
+  /// or playing audio. Triggers [_scheduleAutoAdvanceIfRest] again so
+  /// consecutive rests chain through cleanly.
+  void _completeRestAdvance() {
+    if (!mounted) return;
+    final lastIndex = _songNotes.length - 1;
+    final wasFinalSlot = _songIndex >= lastIndex;
+    setState(() {
+      if (wasFinalSlot) {
+        // Reaching the end on a rest is rare but possible. We treat it
+        // as "song complete" without the celebration overlay — the
+        // player didn't actively finish, the song just timed out.
+        _songIndex = 0;
+        _mistakesThisRun = 0;
+        _wrongChargedNotesThisRun = 0;
+        _mistakeChargedForCurrentSongNote = false;
+      } else {
+        _songIndex++;
+      }
+      _feedbackState = FeedbackState.idle;
+      _isTransitioning = false;
+    });
+    _scheduleAutoAdvanceIfRest();
+  }
 
   void _togglePlayMode() {
     setState(() {
@@ -4429,6 +4883,9 @@ class _SongLearningScreenState extends State<SongLearningScreen> {
       _byHeartHintNoteId = null;
       _byHeartMistakesOnCurrentNote = 0;
     });
+    // The song just snapped back to slot 0 — if that's a rest, kick
+    // off the auto-advance so the player isn't stuck staring at it.
+    _scheduleAutoAdvanceIfRest();
   }
 
   void _triggerSongCompleteOverlay({
@@ -4456,18 +4913,23 @@ class _SongLearningScreenState extends State<SongLearningScreen> {
 
   Future<void> _onFingerPlacement(_FingerPlacement placement) async {
     if (_isTransitioning) return;
-    final noteId = _currentNote.id;
+    // Rests don't accept input — the slot auto-advances on its own
+    // timer. Ignore stray taps so the player can rest their hand.
+    if (_isCurrentRest) return;
+    final note = _currentNote;
+    if (note == null) return; // Defensive: rest already handled above.
+    final noteId = note.id;
     final hintWasHidden = (_mastered[noteId] ?? false) && (_hideHintForNote[noteId] ?? false);
     final noteVisibleInUi = !_isByHeartMode || _byHeartHintNoteId == noteId;
     final hintVisibleNow = noteVisibleInUi && _showHintFor(noteId);
 
     final isCorrect =
-        placement.stringIndex == _currentNote.stringIndex &&
-        placement.fingerNumber == _currentNote.fingerNumber &&
+        placement.stringIndex == note.stringIndex &&
+        placement.fingerNumber == note.fingerNumber &&
         // Low-2 notes (e.g. C natural on the A string) must be played
         // with the 2nd finger close to the 1st finger. High-2 targets
         // (C#, F#) accept either sub-zone for backward compatibility.
-        (!_currentNote.lowSecondFinger || placement.lowSecondVariant);
+        (!note.lowSecondFinger || placement.lowSecondVariant);
 
     if (isCorrect) {
       setState(() {
@@ -4510,19 +4972,19 @@ class _SongLearningScreenState extends State<SongLearningScreen> {
           outcome: true,
           starsDelta: starsForCorrect,
           noteId: noteId,
-          stringIndex: _currentNote.stringIndex,
+          stringIndex: note.stringIndex,
           songId: _selectedSong.id,
           byHeartMode: _isByHeartMode,
           hintUsed: hintVisibleNow,
           metadata: {
             'fingerNumber': placement.fingerNumber,
-            'targetFinger': _currentNote.fingerNumber,
+            'targetFinger': note.fingerNumber,
           },
         ),
       );
 
       final noteDurationMs = _currentNoteDurationMs;
-      await _playNoteTone(_currentNote, durationMs: noteDurationMs);
+      await _playNoteTone(note, durationMs: noteDurationMs);
       await Future<void>.delayed(Duration(milliseconds: noteDurationMs));
 
       if (!mounted) return;
@@ -4537,6 +4999,12 @@ class _SongLearningScreenState extends State<SongLearningScreen> {
         _feedbackState = FeedbackState.idle;
         _isTransitioning = false;
       });
+      // The new slot may be a rest — chain the silent auto-advance.
+      // Skipped on song completion: the celebration overlay handles
+      // that path on its own.
+      if (!songCompleted) {
+        _scheduleAutoAdvanceIfRest();
+      }
       if (songCompleted) {
         final noteCount = _songNotes.length;
         final correctlyPlayedCount = max<int>(
@@ -4666,13 +5134,13 @@ class _SongLearningScreenState extends State<SongLearningScreen> {
           outcome: false,
           starsDelta: chargedNow ? -1 : 0,
           noteId: noteId,
-          stringIndex: _currentNote.stringIndex,
+          stringIndex: note.stringIndex,
           songId: _selectedSong.id,
           byHeartMode: _isByHeartMode,
           hintUsed: hintVisibleNow,
           metadata: {
             'fingerNumber': placement.fingerNumber,
-            'targetFinger': _currentNote.fingerNumber,
+            'targetFinger': note.fingerNumber,
           },
         ),
       );
@@ -4734,8 +5202,17 @@ class _SongLearningScreenState extends State<SongLearningScreen> {
     writeU32(dataSize);
 
     const amplitude = 0.38;
-    const attackSamples = 5200;
-    const releaseSamples = 6800;
+    // Scale the attack/release ramps with the note's duration so the
+    // envelope doesn't swallow the body of short notes. For quarter
+    // notes and longer the result is identical to the original
+    // (capped at 5200 attack / 6800 release samples ≈ 118 / 154 ms);
+    // for eighths and sixteenths the ramps shorten proportionally so
+    // the note actually rings audibly between attack and release
+    // instead of fading to silence the moment it finishes ramping in.
+    // Effect: less staccato feel and a smaller perceived gap between
+    // adjacent short notes.
+    final attackSamples = min(5200, (sampleCount * 0.20).round());
+    final releaseSamples = min(6800, (sampleCount * 0.25).round());
     const lowPassMix1 = 0.955;
     const lowPassMix2 = 0.92;
     const bowNoiseAmount = 0.0012;
@@ -4834,14 +5311,22 @@ class _SongLearningScreenState extends State<SongLearningScreen> {
                                   note: _currentNote,
                                   feedbackState: _feedbackState,
                                   showHintColors: _showHintColors,
-                                  hintColor: _currentNote.hintColor,
+                                  hintColor: _currentNote?.hintColor ??
+                                      const Color(0xFF111111),
                                   duration: _currentNoteDuration,
                                 ),
                                 const SizedBox(height: 8),
-                                _NoteHintCard(
-                                  note: _currentNote,
-                                  showHintColors: _showHintColors,
-                                ),
+                                // Solfege hint card only makes sense for
+                                // pitched slots — there's no syllable to
+                                // sing during a rest. Use a same-height
+                                // placeholder so the layout doesn't jump.
+                                if (_currentNote != null)
+                                  _NoteHintCard(
+                                    note: _currentNote!,
+                                    showHintColors: _showHintColors,
+                                  )
+                                else
+                                  const SizedBox(height: 108),
                                 const SizedBox(height: 8),
                               ] else ...[
                                 const SizedBox(height: 2),
@@ -4870,18 +5355,48 @@ class _SongLearningScreenState extends State<SongLearningScreen> {
                       width: neckViewportWidth,
                       child: Padding(
                         padding: const EdgeInsets.only(right: 8, top: 0, bottom: 10),
-                        child: _VerticalViolinNeckCard(
-                          key: ValueKey('${_selectedSong.id}_${_songIndex}_${_currentNote.id}'),
-                          neckHeight: neckHeight,
-                          neckWidth: neckWidth,
-                          targetFingerNumber: _currentNote.fingerNumber,
-                          targetStringIndex: _currentNote.stringIndex,
-                          targetLowSecondFinger: _currentNote.lowSecondFinger,
-                          showHintColors: _showHintColors,
-                          hintColor: _currentNote.hintColor,
-                          shakeTrigger: _neckShakeTrigger,
-                          onPlacement: _onFingerPlacement,
-                        ),
+                        // While the current slot is a rest the neck is
+                        // dimmed and ignores taps — it has no target
+                        // for the player to aim at. The auto-advance
+                        // timer takes the slot to the next note.
+                        child: _isCurrentRest
+                            ? IgnorePointer(
+                                child: Opacity(
+                                  opacity: 0.35,
+                                  child: _VerticalViolinNeckCard(
+                                    key: ValueKey(
+                                      '${_selectedSong.id}_${_songIndex}_rest',
+                                    ),
+                                    neckHeight: neckHeight,
+                                    neckWidth: neckWidth,
+                                    // Sentinel "no-op" target — the
+                                    // painter still draws strings/frets
+                                    // but no hint marker fires.
+                                    targetFingerNumber: 0,
+                                    targetStringIndex: 0,
+                                    targetLowSecondFinger: false,
+                                    showHintColors: false,
+                                    hintColor: const Color(0xFF111111),
+                                    shakeTrigger: _neckShakeTrigger,
+                                    onPlacement: _onFingerPlacement,
+                                  ),
+                                ),
+                              )
+                            : _VerticalViolinNeckCard(
+                                key: ValueKey(
+                                  '${_selectedSong.id}_${_songIndex}_${_currentNote!.id}',
+                                ),
+                                neckHeight: neckHeight,
+                                neckWidth: neckWidth,
+                                targetFingerNumber: _currentNote!.fingerNumber,
+                                targetStringIndex: _currentNote!.stringIndex,
+                                targetLowSecondFinger:
+                                    _currentNote!.lowSecondFinger,
+                                showHintColors: _showHintColors,
+                                hintColor: _currentNote!.hintColor,
+                                shakeTrigger: _neckShakeTrigger,
+                                onPlacement: _onFingerPlacement,
+                              ),
                       ),
                     ),
                   ],
@@ -5087,7 +5602,10 @@ class _MusicStaffCard extends StatelessWidget {
     this.duration = NoteDuration.quarter,
   });
 
-  final GameNote note;
+  /// `null` when the current slot is a rest. The painter then draws the
+  /// rest glyph indicated by `duration.spec.restGlyph` instead of a
+  /// pitched note head.
+  final GameNote? note;
   final FeedbackState feedbackState;
   final bool showHintColors;
   final Color hintColor;
@@ -5095,6 +5613,7 @@ class _MusicStaffCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isRest = duration.spec.isRest;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
@@ -5115,9 +5634,17 @@ class _MusicStaffCard extends StatelessWidget {
             height: 130,
             child: CustomPaint(
               painter: _StaffPainter(
-                staffStep: note.staffStep,
-                showSharp: note.letterLabel.contains('#'),
-                noteColor: showHintColors ? hintColor : const Color(0xFF111111),
+                // For rests, staffStep is unused — the painter routes to
+                // the rest-glyph path. We pass 4 (middle line) just so
+                // the field has a sensible value.
+                staffStep: note?.staffStep ?? 4,
+                showSharp:
+                    !isRest && (note?.letterLabel.contains('#') ?? false),
+                // Rests render in a neutral dark color regardless of
+                // hint state — a rest doesn't belong to a string/finger.
+                noteColor: isRest
+                    ? const Color(0xFF111111)
+                    : (showHintColors ? hintColor : const Color(0xFF111111)),
                 durationSpec: duration.spec,
               ),
               child: const SizedBox.expand(),
@@ -5506,6 +6033,22 @@ class _StaffPainter extends CustomPainter {
     final clefRightX = clefX + clefText.width * clefScale;
 
     final bottomLineY = staffBottomY;
+
+    // Rest slots: draw the Unicode rest glyph centered horizontally on
+    // the staff and aligned to its conventional vertical position. Skip
+    // the entire note-head / sharp / stem / flag pipeline below.
+    if (durationSpec.isRest) {
+      _paintRest(
+        canvas: canvas,
+        clefRightX: clefRightX,
+        staffRightX: staffRightX,
+        staffTopY: staffTopY,
+        staffBottomY: staffBottomY,
+        spacing: spacing,
+      );
+      return;
+    }
+
     final noteY = bottomLineY - staffStep * (spacing / 2);
 
     final noteFillPaint = Paint()..color = noteColor;
@@ -5749,6 +6292,92 @@ class _StaffPainter extends CustomPainter {
         )
         ..close();
       canvas.drawPath(flagPath, flagPaint);
+    }
+  }
+
+  /// Paints the rest glyph for the current `durationSpec`, plus an
+  /// augmentation dot for dotted rests. The glyph itself comes from
+  /// `durationSpec.restGlyph` (a SMuFL/Unicode musical-symbol code
+  /// point) and is rendered through `TextPainter`, the same pipeline
+  /// used for the treble clef.
+  ///
+  /// Rests sit slightly closer to the clef than note heads do — there's
+  /// no need to leave room for an accidental — and span the height of
+  /// the staff so they read clearly even at small sizes.
+  void _paintRest({
+    required Canvas canvas,
+    required double clefRightX,
+    required double staffRightX,
+    required double staffTopY,
+    required double staffBottomY,
+    required double spacing,
+  }) {
+    final glyph = durationSpec.restGlyph;
+    if (glyph == null) return;
+
+    final restStyle = TextStyle(
+      color: noteColor,
+      fontSize: 80,
+      fontWeight: FontWeight.w400,
+    );
+    final restText = TextPainter(
+      text: TextSpan(text: glyph, style: restStyle),
+      textDirection: TextDirection.ltr,
+    )..layout();
+
+    // Target glyph height ≈ 4 staff spaces (the height of the 5-line
+    // staff). Quarter rest naturally spans roughly that range; we let
+    // half/whole/eighth scale to the same metric for visual consistency.
+    final targetHeight = spacing * 4;
+    final scale = targetHeight / max(1.0, restText.height);
+    final scaledW = restText.width * scale;
+    final scaledH = restText.height * scale;
+
+    final staffMidY = (staffTopY + staffBottomY) / 2;
+    // Center horizontally in the space remaining after the clef.
+    final restCenterX = (clefRightX + staffRightX) / 2;
+    final glyphX = restCenterX - scaledW / 2;
+
+    // Vertical placement varies by rest type:
+    //   • Whole rest (𝄻): hangs from the 4th line (one space above
+    //     middle).
+    //   • Half rest (𝄼): sits on the middle line.
+    //   • Quarter / eighth / sixteenth rest (𝄽 / 𝄾 / 𝄿): centered on
+    //     the middle line.
+    // The TextPainter glyph metrics aren't perfectly consistent across
+    // platforms, so we anchor each variant to the staff with a small
+    // hand-tuned offset and let the glyph fall around it.
+    double glyphY;
+    switch (durationSpec.restGlyph) {
+      case '\u{1D13B}': // whole rest — hangs from line 4 (above middle)
+        glyphY = staffMidY - spacing - scaledH * 0.55;
+        break;
+      case '\u{1D13C}': // half rest — sits on the middle line
+        glyphY = staffMidY - scaledH * 0.55;
+        break;
+      default: // quarter / eighth rest — centered on the middle line
+        glyphY = staffMidY - scaledH * 0.5;
+        break;
+    }
+
+    canvas.save();
+    canvas.translate(glyphX, glyphY);
+    canvas.scale(scale, scale);
+    restText.paint(canvas, Offset.zero);
+    canvas.restore();
+
+    if (durationSpec.isDotted) {
+      // Augmentation dot for dotted rests. Sits to the right of the
+      // glyph at roughly the third-line height, matching engraving
+      // convention.
+      final dotRadius = max(2.0, spacing * 0.18);
+      final dotX = glyphX + scaledW + spacing * 0.45;
+      final dotY = staffMidY;
+      canvas.drawCircle(
+        Offset(dotX, dotY),
+        dotRadius,
+        Paint()..color = noteColor,
+      );
     }
   }
 

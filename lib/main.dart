@@ -374,6 +374,105 @@ class UserSession {
   final String avatarId;
 }
 
+/// Persisted per-note adaptive learning state. Shared across the
+/// Learn Notes and Learn Songs modules so a note mastered in one
+/// module starts at the same level in the other.
+///
+/// Only the *level* state persists — transient counters (consecutive
+/// correct streaks, mistake counts inside a level) reset on each
+/// fresh session, which matches the natural feeling that closing the
+/// app ends the current attempt streak while preserving mastery.
+class NoteAdaptiveState {
+  const NoteAdaptiveState({
+    required this.mastered,
+    required this.hideHint,
+    required this.nameMastered,
+    required this.hideName,
+  });
+
+  /// Sticky: once `true`, stays `true`. Drives the lower re-master
+  /// threshold for the Level 1 ↔ 2 transition.
+  final bool mastered;
+
+  /// Currently hiding the color hint (Level 2+). Flips back to false
+  /// when too many mistakes accumulate at Level 2.
+  final bool hideHint;
+
+  /// Sticky: once `true`, stays `true`. Drives the lower re-master
+  /// threshold for the Level 2 ↔ 3 transition.
+  final bool nameMastered;
+
+  /// Currently hiding the solfège card (Level 3). Flips back to false
+  /// when too many mistakes accumulate at Level 3.
+  final bool hideName;
+
+  static const NoteAdaptiveState fresh = NoteAdaptiveState(
+    mastered: false,
+    hideHint: false,
+    nameMastered: false,
+    hideName: false,
+  );
+
+  bool get isFresh =>
+      !mastered && !hideHint && !nameMastered && !hideName;
+
+  NoteAdaptiveState copyWith({
+    bool? mastered,
+    bool? hideHint,
+    bool? nameMastered,
+    bool? hideName,
+  }) {
+    return NoteAdaptiveState(
+      mastered: mastered ?? this.mastered,
+      hideHint: hideHint ?? this.hideHint,
+      nameMastered: nameMastered ?? this.nameMastered,
+      hideName: hideName ?? this.hideName,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        if (mastered) 'm': true,
+        if (hideHint) 'hh': true,
+        if (nameMastered) 'nm': true,
+        if (hideName) 'hn': true,
+      };
+
+  static NoteAdaptiveState fromJson(Object? raw) {
+    if (raw is! Map) return fresh;
+    return NoteAdaptiveState(
+      mastered: raw['m'] == true,
+      hideHint: raw['hh'] == true,
+      nameMastered: raw['nm'] == true,
+      hideName: raw['hn'] == true,
+    );
+  }
+
+  /// Per-flag max — preserves the more-progressed state across two
+  /// snapshots (e.g. local + remote). Sticky bits never regress; the
+  /// transient hide flags also take the more-progressed value, since
+  /// hiding a hint represents *more* mastery than showing it.
+  NoteAdaptiveState mergeWith(NoteAdaptiveState other) {
+    return NoteAdaptiveState(
+      mastered: mastered || other.mastered,
+      hideHint: hideHint || other.hideHint,
+      nameMastered: nameMastered || other.nameMastered,
+      hideName: hideName || other.hideName,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      other is NoteAdaptiveState &&
+      other.mastered == mastered &&
+      other.hideHint == hideHint &&
+      other.nameMastered == nameMastered &&
+      other.hideName == hideName;
+
+  @override
+  int get hashCode =>
+      Object.hash(mastered, hideHint, nameMastered, hideName);
+}
+
 class HeroProgress {
   const HeroProgress({
     required this.stars,
@@ -385,6 +484,7 @@ class HeroProgress {
     required this.weeklyBonusAwardedWeekId,
     required this.stringSectionStars,
     required this.songSectionStars,
+    required this.noteAdaptiveStates,
   });
 
   static const HeroProgress initial = HeroProgress(
@@ -397,6 +497,7 @@ class HeroProgress {
     weeklyBonusAwardedWeekId: -1,
     stringSectionStars: {},
     songSectionStars: {},
+    noteAdaptiveStates: {},
   );
 
   final int stars;
@@ -409,6 +510,11 @@ class HeroProgress {
   final Map<int, int> stringSectionStars;
   final Map<String, int> songSectionStars;
 
+  /// Per-note adaptive learning levels, keyed by [GameNote.id]
+  /// (e.g. `'D5_A'`). Notes not present here are treated as fresh
+  /// (Level 1, all flags false).
+  final Map<String, NoteAdaptiveState> noteAdaptiveStates;
+
   HeroProgress copyWith({
     int? stars,
     int? streakDays,
@@ -420,6 +526,7 @@ class HeroProgress {
     int? weeklyBonusAwardedWeekId,
     Map<int, int>? stringSectionStars,
     Map<String, int>? songSectionStars,
+    Map<String, NoteAdaptiveState>? noteAdaptiveStates,
   }) {
     return HeroProgress(
       stars: stars ?? this.stars,
@@ -435,6 +542,7 @@ class HeroProgress {
           weeklyBonusAwardedWeekId ?? this.weeklyBonusAwardedWeekId,
       stringSectionStars: stringSectionStars ?? this.stringSectionStars,
       songSectionStars: songSectionStars ?? this.songSectionStars,
+      noteAdaptiveStates: noteAdaptiveStates ?? this.noteAdaptiveStates,
     );
   }
 }
@@ -461,6 +569,7 @@ class _HeroProgressStore {
   static const String _weeklyBonusWeekIdKey = 'hero_weekly_bonus_week_id';
   static const String _stringSectionStarsKey = 'hero_string_section_rank_stars_v2';
   static const String _songSectionStarsKey = 'hero_song_section_rank_stars_v2';
+  static const String _noteAdaptiveStatesKey = 'hero_note_adaptive_states_v1';
   static const List<int> _streakMilestones = [2, 3, 5, 7, 14, 21, 30];
 
   static const String _authEndpoint = String.fromEnvironment(
@@ -520,7 +629,51 @@ class _HeroProgressStore {
       _songSectionStarsKey,
       jsonEncode(progress.songSectionStars),
     );
+    await prefs.setString(
+      _noteAdaptiveStatesKey,
+      jsonEncode(_encodeNoteAdaptiveStates(progress.noteAdaptiveStates)),
+    );
     _scheduleRemoteSync();
+  }
+
+  /// Strips notes that are entirely fresh (all flags false) from the
+  /// serialized payload — they're indistinguishable from "missing" on
+  /// load, so omitting them keeps the column lean.
+  static Map<String, dynamic> _encodeNoteAdaptiveStates(
+    Map<String, NoteAdaptiveState> states,
+  ) {
+    final out = <String, dynamic>{};
+    for (final entry in states.entries) {
+      if (entry.value.isFresh) continue;
+      out[entry.key] = entry.value.toJson();
+    }
+    return out;
+  }
+
+  static Map<String, NoteAdaptiveState> _decodeNoteAdaptiveStates(Object? raw) {
+    if (raw == null) return {};
+    Map<String, dynamic>? decoded;
+    if (raw is String) {
+      if (raw.isEmpty) return {};
+      try {
+        final parsed = jsonDecode(raw);
+        if (parsed is Map) {
+          decoded = parsed.map((k, v) => MapEntry('$k', v));
+        }
+      } catch (_) {
+        return {};
+      }
+    } else if (raw is Map) {
+      decoded = raw.map((k, v) => MapEntry('$k', v));
+    }
+    if (decoded == null) return {};
+    final result = <String, NoteAdaptiveState>{};
+    for (final entry in decoded.entries) {
+      final state = NoteAdaptiveState.fromJson(entry.value);
+      if (state.isFresh) continue;
+      result[entry.key] = state;
+    }
+    return result;
   }
 
   static void _scheduleRemoteSync() {
@@ -560,6 +713,8 @@ class _HeroProgressStore {
                     '${e.key}': e.value,
                 },
                 'song_section_stars': progress.songSectionStars,
+                'note_adaptive_states':
+                    _encodeNoteAdaptiveStates(progress.noteAdaptiveStates),
               },
             }),
           )
@@ -598,6 +753,8 @@ class _HeroProgressStore {
             _decodeStringStars(jsonEncode(p['string_section_stars'] ?? {})),
         songSectionStars:
             _decodeSongStars(jsonEncode(p['song_section_stars'] ?? {})),
+        noteAdaptiveStates:
+            _decodeNoteAdaptiveStates(p['note_adaptive_states']),
       );
     } catch (_) {
       return null;
@@ -617,6 +774,13 @@ class _HeroProgressStore {
     for (final e in remote.songSectionStars.entries) {
       mergedSongStars[e.key] = max(mergedSongStars[e.key] ?? 0, e.value);
     }
+    final mergedAdaptive =
+        Map<String, NoteAdaptiveState>.from(local.noteAdaptiveStates);
+    for (final e in remote.noteAdaptiveStates.entries) {
+      final existing = mergedAdaptive[e.key];
+      mergedAdaptive[e.key] =
+          existing == null ? e.value : existing.mergeWith(e.value);
+    }
     return HeroProgress(
       stars: max(local.stars, remote.stars),
       streakDays: activity.streakDays,
@@ -629,6 +793,7 @@ class _HeroProgressStore {
           max(local.weeklyBonusAwardedWeekId, remote.weeklyBonusAwardedWeekId),
       stringSectionStars: mergedStringStars,
       songSectionStars: mergedSongStars,
+      noteAdaptiveStates: mergedAdaptive,
     );
   }
 
@@ -693,6 +858,8 @@ class _HeroProgressStore {
       weeklyBonusAwardedWeekId: prefs.getInt(_weeklyBonusWeekIdKey) ?? -1,
       stringSectionStars: _decodeStringStars(prefs.getString(_stringSectionStarsKey)),
       songSectionStars: _decodeSongStars(prefs.getString(_songSectionStarsKey)),
+      noteAdaptiveStates:
+          _decodeNoteAdaptiveStates(prefs.getString(_noteAdaptiveStatesKey)),
     );
     _loaded = true;
   }
@@ -854,6 +1021,39 @@ class _HeroProgressStore {
     progressListenable.value = updated;
     await _persist(updated);
     return true;
+  }
+
+  /// Returns the persisted adaptive state for [noteId], or
+  /// [NoteAdaptiveState.fresh] if the note has never been progressed.
+  /// Synchronous — relies on the listenable already being populated;
+  /// call [load] first if you're reading from a fresh app launch.
+  static NoteAdaptiveState noteAdaptiveStateFor(String noteId) {
+    return progressListenable.value.noteAdaptiveStates[noteId] ??
+        NoteAdaptiveState.fresh;
+  }
+
+  /// Writes [state] for [noteId] into the persisted progress map and
+  /// triggers the standard local-then-debounced-remote sync. Skips
+  /// the round-trip when the value is unchanged so that idempotent
+  /// re-asserts (e.g. the per-play "still mastered" calls in
+  /// [_onFingerPlacement]) don't churn the I/O path.
+  static Future<void> saveNoteAdaptiveState(
+    String noteId,
+    NoteAdaptiveState state,
+  ) async {
+    await load();
+    final progress = progressListenable.value;
+    final existing = progress.noteAdaptiveStates[noteId];
+    if (existing == state) return;
+    final next = Map<String, NoteAdaptiveState>.from(progress.noteAdaptiveStates);
+    if (state.isFresh) {
+      next.remove(noteId);
+    } else {
+      next[noteId] = state;
+    }
+    final updated = progress.copyWith(noteAdaptiveStates: next);
+    progressListenable.value = updated;
+    await _persist(updated);
   }
 }
 
@@ -4233,6 +4433,48 @@ class _ViolinGameScreenState extends State<ViolinGameScreen> {
     _audioPool = _AudioPool()..init();
     _activeStringIndices = widget.activeStringIndices.toSet().toList()..sort();
     _currentNote = _pickRandomNoteFromSelection();
+    _hydrateAdaptiveStatesFromStore();
+  }
+
+  /// Hydrates `_mastered`, `_hideHintForNote`, `_nameMastered`, and
+  /// `_hideNoteNameForNote` from the shared store. See parallel
+  /// implementation on `SongLearningScreenState` — keeping the
+  /// behavior identical across both modules is what makes adaptive
+  /// progress carry over.
+  Future<void> _hydrateAdaptiveStatesFromStore() async {
+    await _HeroProgressStore.load();
+    if (!mounted) return;
+    var dirty = false;
+    for (final note in _allNotes) {
+      final state = _HeroProgressStore.noteAdaptiveStateFor(note.id);
+      if (_mastered[note.id] != state.mastered) {
+        _mastered[note.id] = state.mastered;
+        dirty = true;
+      }
+      if (_hideHintForNote[note.id] != state.hideHint) {
+        _hideHintForNote[note.id] = state.hideHint;
+        dirty = true;
+      }
+      if (_nameMastered[note.id] != state.nameMastered) {
+        _nameMastered[note.id] = state.nameMastered;
+        dirty = true;
+      }
+      if (_hideNoteNameForNote[note.id] != state.hideName) {
+        _hideNoteNameForNote[note.id] = state.hideName;
+        dirty = true;
+      }
+    }
+    if (dirty) setState(() {});
+  }
+
+  void _persistAdaptiveStateForNote(String noteId) {
+    final state = NoteAdaptiveState(
+      mastered: _mastered[noteId] ?? false,
+      hideHint: _hideHintForNote[noteId] ?? false,
+      nameMastered: _nameMastered[noteId] ?? false,
+      hideName: _hideNoteNameForNote[noteId] ?? false,
+    );
+    unawaited(_HeroProgressStore.saveNoteAdaptiveState(noteId, state));
   }
 
   @override
@@ -4331,6 +4573,7 @@ class _ViolinGameScreenState extends State<ViolinGameScreen> {
         _isTransitioning = true;
         _mistakeChargedForCurrentNote = false;
       });
+      _persistAdaptiveStateForNote(noteId);
 
       var starsEarned = hintWasHidden ? 2 : 1;
       if (justMastered) {
@@ -4411,6 +4654,7 @@ class _ViolinGameScreenState extends State<ViolinGameScreen> {
         }
         _neckShakeTrigger++;
       });
+      _persistAdaptiveStateForNote(noteId);
       final chargedNow = !_mistakeChargedForCurrentNote;
       if (chargedNow) {
         _mistakeChargedForCurrentNote = true;
@@ -4876,11 +5120,61 @@ class _SongLearningScreenState extends State<SongLearningScreen> {
     super.initState();
     _audioPool = _AudioPool()..init();
     _selectedSong = widget.song;
+    _hydrateAdaptiveStatesFromStore();
     // If the song happens to begin with a rest, the player can't act
     // on it — schedule the silent auto-advance after the first frame.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scheduleAutoAdvanceIfRest();
     });
+  }
+
+  /// Pulls each note's persisted [NoteAdaptiveState] (mastery + hide
+  /// flags) from [_HeroProgressStore] into the local working maps so
+  /// progress carries across screen entries, modules, and sessions.
+  ///
+  /// The store is loaded synchronously during app launch (see
+  /// `_ViolinHeroAppState._loadLoginState`), so in the typical case
+  /// this returns instantly. The async branch protects against
+  /// navigating into a song before the launch-time `load()` completes.
+  Future<void> _hydrateAdaptiveStatesFromStore() async {
+    await _HeroProgressStore.load();
+    if (!mounted) return;
+    var dirty = false;
+    for (final note in _songNotePool) {
+      final state = _HeroProgressStore.noteAdaptiveStateFor(note.id);
+      if (_mastered[note.id] != state.mastered) {
+        _mastered[note.id] = state.mastered;
+        dirty = true;
+      }
+      if (_hideHintForNote[note.id] != state.hideHint) {
+        _hideHintForNote[note.id] = state.hideHint;
+        dirty = true;
+      }
+      if (_nameMastered[note.id] != state.nameMastered) {
+        _nameMastered[note.id] = state.nameMastered;
+        dirty = true;
+      }
+      if (_hideNoteNameForNote[note.id] != state.hideName) {
+        _hideNoteNameForNote[note.id] = state.hideName;
+        dirty = true;
+      }
+    }
+    if (dirty) setState(() {});
+  }
+
+  /// Writes the four-flag adaptive state back to the shared store.
+  /// Called after every level transition (correct or wrong) so the
+  /// next screen entry — same module or different — picks up exactly
+  /// where the player left off. The store call is idempotent and
+  /// debounces remote sync, so calling on every play is cheap.
+  void _persistAdaptiveStateForNote(String noteId) {
+    final state = NoteAdaptiveState(
+      mastered: _mastered[noteId] ?? false,
+      hideHint: _hideHintForNote[noteId] ?? false,
+      nameMastered: _nameMastered[noteId] ?? false,
+      hideName: _hideNoteNameForNote[noteId] ?? false,
+    );
+    unawaited(_HeroProgressStore.saveNoteAdaptiveState(noteId, state));
   }
 
   @override
@@ -5115,6 +5409,7 @@ class _SongLearningScreenState extends State<SongLearningScreen> {
         _isTransitioning = true;
         _mistakeChargedForCurrentSongNote = false;
       });
+      _persistAdaptiveStateForNote(noteId);
 
       final starsForCorrect = switch (_isByHeartMode) {
         true => hintVisibleNow ? 2 : 3,
@@ -5289,6 +5584,7 @@ class _SongLearningScreenState extends State<SongLearningScreen> {
         }
         _neckShakeTrigger++;
       });
+      _persistAdaptiveStateForNote(noteId);
       final chargedNow = !_mistakeChargedForCurrentSongNote;
       if (chargedNow) {
         _mistakeChargedForCurrentSongNote = true;

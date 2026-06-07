@@ -70,6 +70,10 @@ Deno.serve(async (req) => {
         weekly_bonus_awarded_week_id: data.weekly_bonus_awarded_week_id,
         string_section_stars: data.string_section_stars,
         song_section_stars: data.song_section_stars,
+        // May be `null` for rows written before the
+        // 004_add_note_adaptive_states migration was applied — the
+        // client decoder normalizes nullish to an empty map.
+        note_adaptive_states: data.note_adaptive_states ?? {},
       },
     });
   }
@@ -79,7 +83,11 @@ Deno.serve(async (req) => {
     const progress = body.progress as Record<string, unknown> | undefined;
     if (!progress) return jsonResponse({ error: "Missing progress" }, 400);
 
-    const row = {
+    // Build the upsert row. Including only the fields we explicitly
+    // accept means: (a) clients can't write arbitrary columns, and
+    // (b) when an older client omits a field, the existing column
+    // value on conflict is preserved by Postgres' DO UPDATE SET.
+    const row: Record<string, unknown> = {
       username,
       stars: Number(progress.stars ?? 0),
       streak_days: Number(progress.streak_days ?? 0),
@@ -98,6 +106,14 @@ Deno.serve(async (req) => {
       song_section_stars: progress.song_section_stars ?? {},
       updated_at: new Date().toISOString(),
     };
+
+    // Only include note_adaptive_states in the row when the client
+    // sent it. This way, an older client (without the new field)
+    // upserting a row will not clobber any adaptive state already
+    // persisted from a newer client on the same account.
+    if (progress.note_adaptive_states !== undefined) {
+      row.note_adaptive_states = progress.note_adaptive_states ?? {};
+    }
 
     const { error } = await supabase
       .from("violin_user_progress")

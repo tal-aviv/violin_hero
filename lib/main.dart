@@ -4183,6 +4183,13 @@ class _ViolinGameScreenState extends State<ViolinGameScreen> {
   final Map<String, int> _consecutiveCorrect = {
     for (final note in _allNotes) note.id: 0,
   };
+  // Mirrors the song-learning screen's adaptive system. See the
+  // commentary on [SongLearningScreenState._consecutiveCorrectAtLevel2]
+  // for the reasoning behind the separate Level-2 streak counter and
+  // the three-level progression model.
+  final Map<String, int> _consecutiveCorrectAtLevel2 = {
+    for (final note in _allNotes) note.id: 0,
+  };
   final Map<String, bool> _mastered = {for (final note in _allNotes) note.id: false};
   final Map<String, bool> _hideHintForNote = {
     for (final note in _allNotes) note.id: false,
@@ -4190,8 +4197,20 @@ class _ViolinGameScreenState extends State<ViolinGameScreen> {
   final Map<String, int> _mistakesWithoutHint = {
     for (final note in _allNotes) note.id: 0,
   };
+  final Map<String, bool> _nameMastered = {
+    for (final note in _allNotes) note.id: false,
+  };
+  final Map<String, bool> _hideNoteNameForNote = {
+    for (final note in _allNotes) note.id: false,
+  };
+  final Map<String, int> _mistakesWithoutNoteName = {
+    for (final note in _allNotes) note.id: 0,
+  };
   static const int _mistakesBeforeHintReturns = 2;
   static const int _relearnCorrectToHideHintAgain = 2;
+  static const int _correctToHideNoteName = 3;
+  static const int _relearnCorrectToHideNoteNameAgain = 2;
+  static const int _mistakesBeforeNoteNameReturns = 2;
   int _neckShakeTrigger = 0;
   late final _AudioPool _audioPool;
   final Map<String, Uint8List> _toneCache = {};
@@ -4254,6 +4273,8 @@ class _ViolinGameScreenState extends State<ViolinGameScreen> {
     if (_isTransitioning) return;
     final noteId = _currentNote.id;
     final hintWasHidden = (_mastered[noteId] ?? false) && (_hideHintForNote[noteId] ?? false);
+    final nameWasHidden =
+        (_nameMastered[noteId] ?? false) && (_hideNoteNameForNote[noteId] ?? false);
     final alreadyMastered = _mastered[noteId] ?? false;
 
     final isCorrect =
@@ -4268,6 +4289,12 @@ class _ViolinGameScreenState extends State<ViolinGameScreen> {
       setState(() {
         _feedbackState = FeedbackState.correct;
         _consecutiveCorrect[noteId] = (_consecutiveCorrect[noteId] ?? 0) + 1;
+        if (hintWasHidden) {
+          _consecutiveCorrectAtLevel2[noteId] =
+              (_consecutiveCorrectAtLevel2[noteId] ?? 0) + 1;
+        } else {
+          _consecutiveCorrectAtLevel2[noteId] = 0;
+        }
 
         if ((_consecutiveCorrect[noteId] ?? 0) >= 3) {
           justMastered = !alreadyMastered;
@@ -4281,6 +4308,25 @@ class _ViolinGameScreenState extends State<ViolinGameScreen> {
           _mistakesWithoutHint[noteId] = 0;
         } else if (hintWasHidden) {
           _mistakesWithoutHint[noteId] = 0;
+        }
+        // Level 2 → 3 / 2.5 → 3: graduate the note name out once the
+        // player has built a sufficient streak *while already at
+        // Level 2* (color hint hidden).
+        if (hintWasHidden &&
+            !(_nameMastered[noteId] ?? false) &&
+            (_consecutiveCorrectAtLevel2[noteId] ?? 0) >= _correctToHideNoteName) {
+          _nameMastered[noteId] = true;
+          _hideNoteNameForNote[noteId] = true;
+          _mistakesWithoutNoteName[noteId] = 0;
+        } else if ((_nameMastered[noteId] ?? false) &&
+            !nameWasHidden &&
+            hintWasHidden &&
+            (_consecutiveCorrectAtLevel2[noteId] ?? 0) >=
+                _relearnCorrectToHideNoteNameAgain) {
+          _hideNoteNameForNote[noteId] = true;
+          _mistakesWithoutNoteName[noteId] = 0;
+        } else if (nameWasHidden) {
+          _mistakesWithoutNoteName[noteId] = 0;
         }
         _isTransitioning = true;
         _mistakeChargedForCurrentNote = false;
@@ -4345,7 +4391,17 @@ class _ViolinGameScreenState extends State<ViolinGameScreen> {
       setState(() {
         _feedbackState = FeedbackState.wrong;
         _consecutiveCorrect[noteId] = 0;
-        if (hintWasHidden) {
+        _consecutiveCorrectAtLevel2[noteId] = 0;
+        // Cascade one level at a time — Level 3 → 2 happens before
+        // any color hint can come back.
+        if (nameWasHidden) {
+          final nextMistakeCount = (_mistakesWithoutNoteName[noteId] ?? 0) + 1;
+          _mistakesWithoutNoteName[noteId] = nextMistakeCount;
+          if (nextMistakeCount >= _mistakesBeforeNoteNameReturns) {
+            _hideNoteNameForNote[noteId] = false;
+            _mistakesWithoutNoteName[noteId] = 0;
+          }
+        } else if (hintWasHidden) {
           final nextMistakeCount = (_mistakesWithoutHint[noteId] ?? 0) + 1;
           _mistakesWithoutHint[noteId] = nextMistakeCount;
           if (nextMistakeCount >= _mistakesBeforeHintReturns) {
@@ -4398,6 +4454,17 @@ class _ViolinGameScreenState extends State<ViolinGameScreen> {
     final isMastered = _mastered[noteId] ?? false;
     final hideHint = _hideHintForNote[noteId] ?? false;
     return !isMastered || !hideHint;
+  }
+
+  /// `true` when the solfège card should display the note name. False
+  /// only at Level 3, except during the brief "correct" feedback
+  /// window where we briefly reveal the name as confirmation.
+  bool get _showNoteNameForCurrentNote {
+    final noteId = _currentNote.id;
+    final isNameMastered = _nameMastered[noteId] ?? false;
+    final hideName = _hideNoteNameForNote[noteId] ?? false;
+    if (!isNameMastered || !hideName) return true;
+    return _feedbackState == FeedbackState.correct;
   }
 
   Future<void> _playNoteTone(GameNote note) async {
@@ -4532,6 +4599,7 @@ class _ViolinGameScreenState extends State<ViolinGameScreen> {
                         _NoteHintCard(
                           note: _currentNote,
                           showHintColors: _showHintColors,
+                          showNoteName: _showNoteNameForCurrentNote,
                         ),
                         const Spacer(),
                       ],
@@ -4726,9 +4794,40 @@ class _SongLearningScreenState extends State<SongLearningScreen> {
     ),
   ];
 
+  // ── Adaptive hint system ────────────────────────────────────────
+  // Per-note progression has three levels, each progressively harder:
+  //
+  //   Level 1 — full hints  (color note head + colored neck indicator
+  //                          + colored solfège card)
+  //   Level 2 — name only   (no color anywhere; solfège card visible
+  //                          in neutral grey)
+  //   Level 3 — staff only  (no color, no solfège shown until the
+  //                          player places correctly — then the
+  //                          solfège card briefly reveals as positive
+  //                          confirmation alongside the audio)
+  //
+  // Progression: 3 consecutive correct plays at the current level
+  // graduate the note up. A wrong play resets the streak counter and,
+  // if it accumulates [_mistakesBeforeHintReturns] (or, for Level 3,
+  // [_mistakesBeforeNoteNameReturns]) misses, drops the note one level
+  // down so the help comes back. Re-mastery uses the lower thresholds
+  // [_relearnCorrectToHideHintAgain] / [_relearnCorrectToHideNoteNameAgain]
+  // — once a player has *been* at a level, getting back is faster.
   static const int _mistakesBeforeHintReturns = 2;
   static const int _relearnCorrectToHideHintAgain = 2;
+  static const int _correctToHideNoteName = 3;
+  static const int _relearnCorrectToHideNoteNameAgain = 2;
+  static const int _mistakesBeforeNoteNameReturns = 2;
   final Map<String, int> _consecutiveCorrect = {
+    for (final note in _songNotePool) note.id: 0,
+  };
+  // Counts only those consecutive correct plays where the note was
+  // already at Level 2 (color hidden) at the start of the play. This
+  // is what gates the Level 2 → 3 transition — a fresh player who
+  // gets 3 correct in a row at Level 1 graduates to Level 2 but
+  // still needs 3 *more* correct plays *at Level 2* before the name
+  // hides. Reset on any mistake or whenever the hint comes back.
+  final Map<String, int> _consecutiveCorrectAtLevel2 = {
     for (final note in _songNotePool) note.id: 0,
   };
   final Map<String, bool> _mastered = {
@@ -4738,6 +4837,18 @@ class _SongLearningScreenState extends State<SongLearningScreen> {
     for (final note in _songNotePool) note.id: false,
   };
   final Map<String, int> _mistakesWithoutHint = {
+    for (final note in _songNotePool) note.id: 0,
+  };
+  // Sticky: once a note has reached Level 3, [_nameMastered] stays
+  // true forever even if the name comes back due to mistakes — that
+  // way Level 2.5 → 3 re-mastery uses the lower threshold.
+  final Map<String, bool> _nameMastered = {
+    for (final note in _songNotePool) note.id: false,
+  };
+  final Map<String, bool> _hideNoteNameForNote = {
+    for (final note in _songNotePool) note.id: false,
+  };
+  final Map<String, int> _mistakesWithoutNoteName = {
     for (final note in _songNotePool) note.id: 0,
   };
 
@@ -4809,6 +4920,17 @@ class _SongLearningScreenState extends State<SongLearningScreen> {
     return !isMastered || !hideHint;
   }
 
+  /// `true` when the solfège card should display the note name. False
+  /// only at Level 3, with one exception: while the player is being
+  /// shown positive feedback for a correct placement we briefly reveal
+  /// the name as a learning confirmation alongside the audio.
+  bool _showNoteNameFor(String noteId) {
+    final isNameMastered = _nameMastered[noteId] ?? false;
+    final hideName = _hideNoteNameForNote[noteId] ?? false;
+    if (!isNameMastered || !hideName) return true;
+    return _feedbackState == FeedbackState.correct;
+  }
+
   bool get _notesVisibleInUi {
     final note = _currentNote;
     if (note == null) {
@@ -4823,6 +4945,13 @@ class _SongLearningScreenState extends State<SongLearningScreen> {
     final note = _currentNote;
     if (note == null) return false;
     return _notesVisibleInUi && _showHintFor(note.id);
+  }
+
+  bool get _showNoteNameForCurrentNote {
+    final note = _currentNote;
+    if (note == null) return false;
+    if (!_notesVisibleInUi) return false;
+    return _showNoteNameFor(note.id);
   }
 
   /// Auto-advances the song through any rest slots without requiring
@@ -4920,6 +5049,8 @@ class _SongLearningScreenState extends State<SongLearningScreen> {
     if (note == null) return; // Defensive: rest already handled above.
     final noteId = note.id;
     final hintWasHidden = (_mastered[noteId] ?? false) && (_hideHintForNote[noteId] ?? false);
+    final nameWasHidden =
+        (_nameMastered[noteId] ?? false) && (_hideNoteNameForNote[noteId] ?? false);
     final noteVisibleInUi = !_isByHeartMode || _byHeartHintNoteId == noteId;
     final hintVisibleNow = noteVisibleInUi && _showHintFor(noteId);
 
@@ -4939,6 +5070,17 @@ class _SongLearningScreenState extends State<SongLearningScreen> {
           _byHeartMistakesOnCurrentNote = 0;
         }
         _consecutiveCorrect[noteId] = (_consecutiveCorrect[noteId] ?? 0) + 1;
+        // The Level 2 → 3 graduation only counts plays the player
+        // entered with the color hint already hidden — this enforces
+        // the "3 more correct *at Level 2*" gate independent of the
+        // total streak, and resets cleanly whenever the player drops
+        // back to Level 1.5 (hint visible again).
+        if (hintWasHidden) {
+          _consecutiveCorrectAtLevel2[noteId] =
+              (_consecutiveCorrectAtLevel2[noteId] ?? 0) + 1;
+        } else {
+          _consecutiveCorrectAtLevel2[noteId] = 0;
+        }
         if ((_consecutiveCorrect[noteId] ?? 0) >= 3) {
           _mastered[noteId] = true;
           _hideHintForNote[noteId] = true;
@@ -4950,6 +5092,25 @@ class _SongLearningScreenState extends State<SongLearningScreen> {
           _mistakesWithoutHint[noteId] = 0;
         } else if (hintWasHidden) {
           _mistakesWithoutHint[noteId] = 0;
+        }
+        // Level 2 → 3: initial graduation hides the solfège card.
+        // Level 2.5 → 3: re-mastery uses the lower threshold once the
+        // note has *previously* been at Level 3.
+        if (hintWasHidden &&
+            !(_nameMastered[noteId] ?? false) &&
+            (_consecutiveCorrectAtLevel2[noteId] ?? 0) >= _correctToHideNoteName) {
+          _nameMastered[noteId] = true;
+          _hideNoteNameForNote[noteId] = true;
+          _mistakesWithoutNoteName[noteId] = 0;
+        } else if ((_nameMastered[noteId] ?? false) &&
+            !nameWasHidden &&
+            hintWasHidden &&
+            (_consecutiveCorrectAtLevel2[noteId] ?? 0) >=
+                _relearnCorrectToHideNoteNameAgain) {
+          _hideNoteNameForNote[noteId] = true;
+          _mistakesWithoutNoteName[noteId] = 0;
+        } else if (nameWasHidden) {
+          _mistakesWithoutNoteName[noteId] = 0;
         }
         _isTransitioning = true;
         _mistakeChargedForCurrentSongNote = false;
@@ -5106,7 +5267,19 @@ class _SongLearningScreenState extends State<SongLearningScreen> {
           }
         }
         _consecutiveCorrect[noteId] = 0;
-        if (hintWasHidden) {
+        _consecutiveCorrectAtLevel2[noteId] = 0;
+        // Mistake handling cascades one level at a time so that a
+        // single wrong play never demotes the note past two stages.
+        // Level 3 (name hidden) → Level 2 first; only future mistakes
+        // at Level 2 can take the hint color back.
+        if (nameWasHidden) {
+          final nextMistakeCount = (_mistakesWithoutNoteName[noteId] ?? 0) + 1;
+          _mistakesWithoutNoteName[noteId] = nextMistakeCount;
+          if (nextMistakeCount >= _mistakesBeforeNoteNameReturns) {
+            _hideNoteNameForNote[noteId] = false;
+            _mistakesWithoutNoteName[noteId] = 0;
+          }
+        } else if (hintWasHidden) {
           final nextMistakeCount = (_mistakesWithoutHint[noteId] ?? 0) + 1;
           _mistakesWithoutHint[noteId] = nextMistakeCount;
           if (nextMistakeCount >= _mistakesBeforeHintReturns) {
@@ -5324,6 +5497,7 @@ class _SongLearningScreenState extends State<SongLearningScreen> {
                                   _NoteHintCard(
                                     note: _currentNote!,
                                     showHintColors: _showHintColors,
+                                    showNoteName: _showNoteNameForCurrentNote,
                                   )
                                 else
                                   const SizedBox(height: 108),
@@ -5682,13 +5856,31 @@ class _NoteHintCard extends StatelessWidget {
   const _NoteHintCard({
     required this.note,
     required this.showHintColors,
+    this.showNoteName = true,
   });
 
   final GameNote note;
   final bool showHintColors;
 
+  /// `false` at Level 3 of the adaptive system — the card is hidden
+  /// entirely (rendered as transparent space of the same size) so the
+  /// player has to identify the note from its staff position alone.
+  /// Keeping the slot reserved instead of collapsing it prevents the
+  /// layout below from jumping each time the player advances through
+  /// notes at different mastery levels.
+  ///
+  /// Briefly toggled back to `true` on `FeedbackState.correct` so the
+  /// student sees the answer alongside the audio confirmation, then
+  /// flips back to `false` on the next slot.
+  final bool showNoteName;
+
   @override
   Widget build(BuildContext context) {
+    if (!showNoteName) {
+      // Reserve the slot but render nothing — the card vanishes until
+      // a correct placement reveals the note name.
+      return const SizedBox(width: 108, height: 108);
+    }
     return Align(
       alignment: Alignment.center,
       child: Container(

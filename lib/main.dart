@@ -1970,16 +1970,28 @@ const List<SongDefinition> kSongLibrary = [
     // than the cresting `waves_rounded` (which feels more ocean-like).
     icon: Icons.water_rounded,
     color: Color(0xFF8D6E63),
-    // First half (measures 1–4) of an American fiddle reel in D major,
-    // 4/4. Functions as a string-position study disguised as a tune:
-    // M1–M3 each open with three descending four-note sixteenth-note
-    // scale fragments and resolve to a beamed eighth-note pair. M4
-    // has one sixteenth fragment followed by a six-eighth cadence
-    // outlining the D-major arpeggio. Across the four bars the
-    // descending run walks through different fingering positions:
-    //   • M1 (= M3): A-string descent  D5–C#5–B4–A4   (3-2-1-0)
-    //   • M2:        D-string descent  G4–F#4–E4–D4   (3-2-1-0)
-    //   • M4:        D-string turn     E4–G4–F#4–E4   (1-3-2-1)
+    // American fiddle reel in D major, 4/4. Two parts so far:
+    //
+    //   Part A — measures 1–4 — string-position study. M1–M3 each
+    //   open with three descending four-note sixteenth-note scale
+    //   fragments and resolve to a beamed eighth-note pair. M4 has
+    //   one sixteenth fragment followed by a six-eighth cadence that
+    //   outlines the D-major arpeggio. The descending run walks
+    //   through different fingering positions:
+    //     • M1 (= M3): A-string descent  D5–C#5–B4–A4   (3-2-1-0)
+    //     • M2:        D-string descent  G4–F#4–E4–D4   (3-2-1-0)
+    //     • M4:        D-string turn     E4–G4–F#4–E4   (1-3-2-1)
+    //
+    //   Part B — measures 5–8 — bariolage study. Each beat alternates
+    //   a fingered note on the D string with the open A — a classic
+    //   fiddle texture that drills clean string crossings. The
+    //   D-string note descends G → F# → E across each measure pair
+    //   and the section closes on a held D:
+    //     • M5: [G–A]×4 [F#–A]×4              (16 sixteenths)
+    //     • M6: [E–A]×4  D F# B A             (8 sixteenths + 4 eighths)
+    //     • M7: repeat of M5
+    //     • M8: [E–A]×4  D D  D-quarter       (cadence on open D)
+    //
     // Range: D4 → F#5, spans all three upper strings (D / A / E).
     // No low-2 needed.
     noteIds: [
@@ -2007,6 +2019,29 @@ const List<SongDefinition> kSongLibrary = [
       'A4_A', 'A4_A',
       'D4_D', 'F#4_D',
       'D4_D', 'A4_A',
+      // ── M5 ── bariolage: [G(D)–A(A)]×4 then [F#(D)–A(A)]×4
+      //          (16 sixteenths, all string crossings)
+      'G4_D', 'A4_A', 'G4_D', 'A4_A',
+      'G4_D', 'A4_A', 'G4_D', 'A4_A',
+      'F#4_D', 'A4_A', 'F#4_D', 'A4_A',
+      'F#4_D', 'A4_A', 'F#4_D', 'A4_A',
+      // ── M6 ── [E(D)–A(A)]×4 in sixteenths, then a four-eighth
+      //          cadence  D(open)  F#(D)  B(A)  A(open)
+      'E4_D', 'A4_A', 'E4_D', 'A4_A',
+      'E4_D', 'A4_A', 'E4_D', 'A4_A',
+      'D4_D', 'F#4_D', 'B4_A', 'A4_A',
+      // ── M7 ── repeat of M5
+      'G4_D', 'A4_A', 'G4_D', 'A4_A',
+      'G4_D', 'A4_A', 'G4_D', 'A4_A',
+      'F#4_D', 'A4_A', 'F#4_D', 'A4_A',
+      'F#4_D', 'A4_A', 'F#4_D', 'A4_A',
+      // ── M8 ── [E(D)–A(A)]×4 sixteenths, then two open-D eighths
+      //          and a final open-D quarter — full stop on the
+      //          tonic to close Part B
+      'E4_D', 'A4_A', 'E4_D', 'A4_A',
+      'E4_D', 'A4_A', 'E4_D', 'A4_A',
+      'D4_D', 'D4_D',
+      'D4_D',
     ],
     noteDurations: [
       // M1: 12 sixteenths + 2 eighths
@@ -2039,6 +2074,38 @@ const List<SongDefinition> kSongLibrary = [
       NoteDuration.eighth, NoteDuration.eighth,
       NoteDuration.eighth, NoteDuration.eighth,
       NoteDuration.eighth, NoteDuration.eighth,
+      // M5: 16 sixteenths (bariolage)
+      NoteDuration.sixteenth, NoteDuration.sixteenth,
+      NoteDuration.sixteenth, NoteDuration.sixteenth,
+      NoteDuration.sixteenth, NoteDuration.sixteenth,
+      NoteDuration.sixteenth, NoteDuration.sixteenth,
+      NoteDuration.sixteenth, NoteDuration.sixteenth,
+      NoteDuration.sixteenth, NoteDuration.sixteenth,
+      NoteDuration.sixteenth, NoteDuration.sixteenth,
+      NoteDuration.sixteenth, NoteDuration.sixteenth,
+      // M6: 8 sixteenths + 4 eighths
+      NoteDuration.sixteenth, NoteDuration.sixteenth,
+      NoteDuration.sixteenth, NoteDuration.sixteenth,
+      NoteDuration.sixteenth, NoteDuration.sixteenth,
+      NoteDuration.sixteenth, NoteDuration.sixteenth,
+      NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.eighth,
+      // M7: 16 sixteenths (repeat of M5)
+      NoteDuration.sixteenth, NoteDuration.sixteenth,
+      NoteDuration.sixteenth, NoteDuration.sixteenth,
+      NoteDuration.sixteenth, NoteDuration.sixteenth,
+      NoteDuration.sixteenth, NoteDuration.sixteenth,
+      NoteDuration.sixteenth, NoteDuration.sixteenth,
+      NoteDuration.sixteenth, NoteDuration.sixteenth,
+      NoteDuration.sixteenth, NoteDuration.sixteenth,
+      NoteDuration.sixteenth, NoteDuration.sixteenth,
+      // M8: 8 sixteenths + 2 eighths + 1 quarter (final cadence)
+      NoteDuration.sixteenth, NoteDuration.sixteenth,
+      NoteDuration.sixteenth, NoteDuration.sixteenth,
+      NoteDuration.sixteenth, NoteDuration.sixteenth,
+      NoteDuration.sixteenth, NoteDuration.sixteenth,
+      NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.quarter,
     ],
   ),
   // ─────────────────────────────────────────────────────────────────

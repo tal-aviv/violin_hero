@@ -2386,6 +2386,119 @@ const List<SongDefinition> kSongLibrary = [
       NoteDuration.dottedQuarter,
     ],
   ),
+  SongDefinition(
+    id: 'allegro',
+    title: 'Allegro',
+    // Brisk and energetic — a lightning bolt for the lively tempo.
+    icon: Icons.bolt_rounded,
+    color: Color(0xFFFFA726),
+    visibility: SongVisibility.admin,
+    // Suzuki Book 1 (Suzuki), A major, 4/4. Transcribed via Audiveris OMR
+    // (tools/test_fixtures/allegro.musicxml.mvt1.mxl). The scan read cleanly
+    // except M7, where straight quarter notes were mis-tagged as a triplet
+    // (the parallel bar M3 proves it's four quarters). The A-theme is stated
+    // twice (M1-M4 = M5-M8). Range A4 -> A5 across the A and E strings.
+    noteIds: [
+      // M1: A A E E
+      'A5_E', 'A5_E', 'E5_E', 'E5_E',
+      // M2: F# G# A F# | E E
+      'F#5_E', 'G#5_E', 'A5_E', 'F#5_E', 'E5_E', 'E5_E',
+      // M3: D D C# C#
+      'D5_A', 'D5_A', 'C#5_A', 'C#5_A',
+      // M4: B A B C# | A(half)
+      'B4_A', 'A4_A', 'B4_A', 'C#5_A', 'A4_A',
+      // M5: A A E E
+      'A5_E', 'A5_E', 'E5_E', 'E5_E',
+      // M6: F# G# A F# | E E
+      'F#5_E', 'G#5_E', 'A5_E', 'F#5_E', 'E5_E', 'E5_E',
+      // M7: D D C# C#  (fixed from bogus triplets)
+      'D5_A', 'D5_A', 'C#5_A', 'C#5_A',
+      // M8: B A B C# | A(half)
+      'B4_A', 'A4_A', 'B4_A', 'C#5_A', 'A4_A',
+    ],
+    noteDurations: [
+      // M1: q q q q
+      NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.quarter, NoteDuration.quarter,
+      // M2: e e e e q q
+      NoteDuration.eighth, NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.quarter, NoteDuration.quarter,
+      // M3: q q q q
+      NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.quarter, NoteDuration.quarter,
+      // M4: e e e e half
+      NoteDuration.eighth, NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.half,
+      // M5: q q q q
+      NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.quarter, NoteDuration.quarter,
+      // M6: e e e e q q
+      NoteDuration.eighth, NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.quarter, NoteDuration.quarter,
+      // M7: q q q q
+      NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.quarter, NoteDuration.quarter,
+      // M8: e e e e half
+      NoteDuration.eighth, NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.half,
+    ],
+  ),
+  SongDefinition(
+    id: 'long_long_ago',
+    title: 'Long Long Ago',
+    // A nostalgic tune of old tales — an open storybook.
+    icon: Icons.auto_stories_rounded,
+    color: Color(0xFF8D6E63),
+    visibility: SongVisibility.admin,
+    // T.H. Bayly, "Long, Long Ago" (Suzuki Book 1), A major, 4/4. Transcribed
+    // via Audiveris OMR (tools/test_fixtures/longlongago.musicxml.mvt1.mxl).
+    // Pitches read cleanly; the rhythm needed light repair (Audiveris misread
+    // one eighth as a 16th in M1 and a run as triplets in M5 — both resolve to
+    // the plain "quarter + two eighths" figure the parallel bars use). Form is
+    // two near-identical 4-bar phrases. Range A4 -> E5 across the A and E
+    // strings.
+    noteIds: [
+      // M1: A A B C# C# D
+      'A4_A', 'A4_A', 'B4_A', 'C#5_A', 'C#5_A', 'D5_A',
+      // M2: E E C#(half)
+      'E5_E', 'E5_E', 'C#5_A',
+      // M3: E D C# B(half)
+      'E5_E', 'D5_A', 'C#5_A', 'B4_A',
+      // M4: D C# B A(half)
+      'D5_A', 'C#5_A', 'B4_A', 'A4_A',
+      // M5: A A B C# C# D
+      'A4_A', 'A4_A', 'B4_A', 'C#5_A', 'C#5_A', 'D5_A',
+      // M6: E E C#(half)
+      'E5_E', 'E5_E', 'C#5_A',
+      // M7: E D C# B | C# B
+      'E5_E', 'D5_A', 'C#5_A', 'B4_A', 'C#5_A', 'B4_A',
+      // M8: A(half)
+      'A4_A',
+    ],
+    noteDurations: [
+      // M1: q e e q e e
+      NoteDuration.quarter, NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.quarter, NoteDuration.eighth, NoteDuration.eighth,
+      // M2: q q half
+      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.half,
+      // M3: q e e half
+      NoteDuration.quarter, NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.half,
+      // M4: q e e half
+      NoteDuration.quarter, NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.half,
+      // M5: q e e q e e
+      NoteDuration.quarter, NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.quarter, NoteDuration.eighth, NoteDuration.eighth,
+      // M6: q q half
+      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.half,
+      // M7: q e e q e e
+      NoteDuration.quarter, NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.quarter, NoteDuration.eighth, NoteDuration.eighth,
+      // M8: half
+      NoteDuration.half,
+    ],
+  ),
 ];
 
 class GameNote {

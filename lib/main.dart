@@ -4625,7 +4625,6 @@ class _ViolinGameScreenState extends State<ViolinGameScreen> {
   static const int _correctToHideNoteName = 3;
   static const int _relearnCorrectToHideNoteNameAgain = 2;
   static const int _mistakesBeforeNoteNameReturns = 2;
-  int _neckShakeTrigger = 0;
   late final _AudioPool _audioPool;
   final Map<String, Uint8List> _toneCache = {};
   static const double _sectionStarAccuracyThreshold = 0.85;
@@ -4866,7 +4865,6 @@ class _ViolinGameScreenState extends State<ViolinGameScreen> {
             _mistakesWithoutHint[noteId] = 0;
           }
         }
-        _neckShakeTrigger++;
       });
       _persistAdaptiveStateForNote(noteId);
       final chargedNow = !_mistakeChargedForCurrentNote;
@@ -5077,7 +5075,6 @@ class _ViolinGameScreenState extends State<ViolinGameScreen> {
                       targetLowSecondFinger: _currentNote.lowSecondFinger,
                       showHintColors: _showHintColors,
                       hintColor: _currentNote.hintColor,
-                      shakeTrigger: _neckShakeTrigger,
                       onPlacement: _onFingerPlacement,
                     ),
                   ),
@@ -5315,7 +5312,6 @@ class _SongLearningScreenState extends State<SongLearningScreen> {
   late SongDefinition _selectedSong;
   int _songIndex = 0;
   int _mistakesThisRun = 0;
-  int _neckShakeTrigger = 0;
   bool _showSongCompleteOverlay = false;
   int _songCompleteToken = 0;
   String _songCompleteOverlayTitle = 'Song Complete!';
@@ -5796,7 +5792,6 @@ class _SongLearningScreenState extends State<SongLearningScreen> {
             _mistakesWithoutHint[noteId] = 0;
           }
         }
-        _neckShakeTrigger++;
       });
       _persistAdaptiveStateForNote(noteId);
       final chargedNow = !_mistakeChargedForCurrentSongNote;
@@ -6061,7 +6056,6 @@ class _SongLearningScreenState extends State<SongLearningScreen> {
                                     targetLowSecondFinger: false,
                                     showHintColors: false,
                                     hintColor: const Color(0xFF111111),
-                                    shakeTrigger: _neckShakeTrigger,
                                     onPlacement: _onFingerPlacement,
                                   ),
                                 ),
@@ -6078,7 +6072,6 @@ class _SongLearningScreenState extends State<SongLearningScreen> {
                                     _currentNote!.lowSecondFinger,
                                 showHintColors: _showHintColors,
                                 hintColor: _currentNote!.hintColor,
-                                shakeTrigger: _neckShakeTrigger,
                                 onPlacement: _onFingerPlacement,
                               ),
                       ),
@@ -6571,7 +6564,6 @@ class _VerticalViolinNeckCard extends StatefulWidget {
     required this.targetStringIndex,
     required this.showHintColors,
     required this.hintColor,
-    required this.shakeTrigger,
     required this.onPlacement,
     this.targetLowSecondFinger = false,
   });
@@ -6582,7 +6574,6 @@ class _VerticalViolinNeckCard extends StatefulWidget {
   final int targetStringIndex;
   final bool showHintColors;
   final Color hintColor;
-  final int shakeTrigger;
   final ValueChanged<_FingerPlacement> onPlacement;
   final bool targetLowSecondFinger;
 
@@ -6618,40 +6609,31 @@ class _VerticalViolinNeckCardState extends State<_VerticalViolinNeckCard> {
         ],
       ),
       padding: const EdgeInsets.all(8),
-      child: TweenAnimationBuilder<double>(
-        key: ValueKey(widget.shakeTrigger),
-        duration: const Duration(milliseconds: 340),
-        tween: Tween(begin: 0, end: 1),
-        builder: (context, value, child) {
-          final wave = sin(value * pi * 8) * (1 - value) * 10;
-          return Transform.translate(offset: Offset(wave, 0), child: child);
-        },
-        child: Align(
-          alignment: Alignment.topCenter,
-          child: SizedBox(
-            width: widget.neckWidth,
-            height: widget.neckHeight,
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final size = constraints.biggest;
-                return Listener(
-                  behavior: HitTestBehavior.opaque,
-                  onPointerDown: (event) => _handleTap(event.localPosition, size),
-                  child: CustomPaint(
-                    painter: _VerticalViolinNeckPainter(
-                      marker: _marker,
-                      selectedString: _selectedString,
-                      targetFingerNumber: widget.targetFingerNumber,
-                      targetStringIndex: widget.targetStringIndex,
-                      showHintColors: widget.showHintColors,
-                      hintColor: widget.hintColor,
-                      targetLowSecondFinger: widget.targetLowSecondFinger,
-                    ),
-                    child: const SizedBox.expand(),
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: SizedBox(
+          width: widget.neckWidth,
+          height: widget.neckHeight,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final size = constraints.biggest;
+              return Listener(
+                behavior: HitTestBehavior.opaque,
+                onPointerDown: (event) => _handleTap(event.localPosition, size),
+                child: CustomPaint(
+                  painter: _VerticalViolinNeckPainter(
+                    marker: _marker,
+                    selectedString: _selectedString,
+                    targetFingerNumber: widget.targetFingerNumber,
+                    targetStringIndex: widget.targetStringIndex,
+                    showHintColors: widget.showHintColors,
+                    hintColor: widget.hintColor,
+                    targetLowSecondFinger: widget.targetLowSecondFinger,
                   ),
-                );
-              },
-            ),
+                  child: const SizedBox.expand(),
+                ),
+              );
+            },
           ),
         ),
       ),

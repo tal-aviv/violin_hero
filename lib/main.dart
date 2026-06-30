@@ -5502,22 +5502,127 @@ class _SongLearningScreenState extends State<SongLearningScreen> {
     if (!mounted) return;
     final lastIndex = _songNotes.length - 1;
     final wasFinalSlot = _songIndex >= lastIndex;
-    setState(() {
-      if (wasFinalSlot) {
-        // Reaching the end on a rest is rare but possible. We treat it
-        // as "song complete" without the celebration overlay — the
-        // player didn't actively finish, the song just timed out.
+    if (wasFinalSlot) {
+      // The song's final slot is a trailing rest (e.g. a closing
+      // "quarter + quarter rest" bar). The player has already played
+      // the last pitched note, so this is a genuine finish — run the
+      // full completion flow (celebration + stars), exactly as if the
+      // song had ended on a note. Without this the song would silently
+      // loop back to the start and play through again.
+      setState(() {
         _songIndex = 0;
-        _mistakesThisRun = 0;
-        _wrongChargedNotesThisRun = 0;
-        _mistakeChargedForCurrentSongNote = false;
-      } else {
-        _songIndex++;
-      }
+        _feedbackState = FeedbackState.idle;
+        _isTransitioning = false;
+      });
+      unawaited(_finishSong());
+      return;
+    }
+    setState(() {
+      _songIndex++;
       _feedbackState = FeedbackState.idle;
       _isTransitioning = false;
     });
     _scheduleAutoAdvanceIfRest();
+  }
+
+  /// Shared song-completion flow: tallies accuracy, awards stars, logs
+  /// the completion, optionally promotes to "play by heart", and shows
+  /// the celebration overlay. Called both when the player finishes on a
+  /// pitched note and when the song's final slot is a trailing rest.
+  ///
+  /// Callers are expected to have already reset `_songIndex` to 0; the
+  /// run counters (`_mistakesThisRun`, `_wrongChargedNotesThisRun`) must
+  /// still be intact so accuracy and the perfect-run check are correct —
+  /// this method resets them once it's done reading them.
+  Future<void> _finishSong() async {
+    final noteCount = _songNotes.length;
+    final correctlyPlayedCount = max<int>(
+      0,
+      noteCount - _wrongChargedNotesThisRun,
+    );
+    final accuracy = noteCount == 0 ? 0.0 : correctlyPlayedCount / noteCount;
+    final accuracyBonus = switch (accuracy) {
+      >= 0.95 => 15,
+      >= 0.85 => 10,
+      >= 0.70 => 5,
+      _ => 0,
+    };
+    final completionBonus = 10 + (_isByHeartMode ? 10 : 0);
+    final runStarsAward = completionBonus + accuracyBonus;
+    final progressAward = await _HeroProgressStore.awardStars(
+      runStarsAward,
+      username: widget.session.username,
+    );
+    var awardedSongRankStar = false;
+    if (accuracy >= _sectionStarAccuracyThreshold) {
+      awardedSongRankStar = await _HeroProgressStore.awardSongSectionStarForSession(
+        _selectedSong.id,
+      );
+    }
+    unawaited(
+      UserEventLogStore.log(
+        username: widget.session.username,
+        type: UserEventType.songCompleted,
+        outcome: accuracy >= _sectionStarAccuracyThreshold,
+        starsDelta: runStarsAward,
+        songId: _selectedSong.id,
+        byHeartMode: _isByHeartMode,
+        accuracy: accuracy,
+        metadata: {
+          'noteCount': noteCount,
+          'wrongChargedNotes': _wrongChargedNotesThisRun,
+          'completionBonus': completionBonus,
+          'accuracyBonus': accuracyBonus,
+        },
+      ),
+    );
+    if (awardedSongRankStar) {
+      unawaited(
+        UserEventLogStore.log(
+          username: widget.session.username,
+          type: UserEventType.songRankStarAwarded,
+          outcome: true,
+          songId: _selectedSong.id,
+          byHeartMode: _isByHeartMode,
+          accuracy: accuracy,
+        ),
+      );
+    }
+    if (!mounted) return;
+
+    final completedWithoutMistakes = _mistakesThisRun == 0;
+    final shouldEnterByHeart = !_isByHeartMode && completedWithoutMistakes;
+    setState(() {
+      _mistakesThisRun = 0;
+      _wrongChargedNotesThisRun = 0;
+      _mistakeChargedForCurrentSongNote = false;
+      if (shouldEnterByHeart) {
+        _isByHeartMode = true;
+        _byHeartHintNoteId = null;
+        _byHeartMistakesOnCurrentNote = 0;
+      }
+    });
+    if (progressAward.triggeredWeeklyBonus) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Weekly streak bonus unlocked! +20 stars'),
+          duration: Duration(milliseconds: 1300),
+        ),
+      );
+    }
+    if (shouldEnterByHeart) {
+      _triggerSongCompleteOverlay(
+        title: 'Perfect run!',
+        subtitle: 'Now play by heart. +$runStarsAward stars',
+        isBigWin: true,
+      );
+    } else {
+      _triggerSongCompleteOverlay(
+        title: runStarsAward >= 20 ? 'Nice work!' : 'Song Complete!',
+        subtitle: '+$runStarsAward stars',
+        isBigWin: runStarsAward >= 20,
+      );
+    }
   }
 
   void _togglePlayMode() {
@@ -5688,94 +5793,7 @@ class _SongLearningScreenState extends State<SongLearningScreen> {
         _scheduleAutoAdvanceIfRest();
       }
       if (songCompleted) {
-        final noteCount = _songNotes.length;
-        final correctlyPlayedCount = max<int>(
-          0,
-          noteCount - _wrongChargedNotesThisRun,
-        );
-        final accuracy = noteCount == 0 ? 0.0 : correctlyPlayedCount / noteCount;
-        final accuracyBonus = switch (accuracy) {
-          >= 0.95 => 15,
-          >= 0.85 => 10,
-          >= 0.70 => 5,
-          _ => 0,
-        };
-        final completionBonus = 10 + (_isByHeartMode ? 10 : 0);
-        final runStarsAward = completionBonus + accuracyBonus;
-        final progressAward = await _HeroProgressStore.awardStars(
-          runStarsAward,
-          username: widget.session.username,
-        );
-        var awardedSongRankStar = false;
-        if (accuracy >= _sectionStarAccuracyThreshold) {
-          awardedSongRankStar = await _HeroProgressStore.awardSongSectionStarForSession(
-            _selectedSong.id,
-          );
-        }
-        unawaited(
-          UserEventLogStore.log(
-            username: widget.session.username,
-            type: UserEventType.songCompleted,
-            outcome: accuracy >= _sectionStarAccuracyThreshold,
-            starsDelta: runStarsAward,
-            songId: _selectedSong.id,
-            byHeartMode: _isByHeartMode,
-            accuracy: accuracy,
-            metadata: {
-              'noteCount': noteCount,
-              'wrongChargedNotes': _wrongChargedNotesThisRun,
-              'completionBonus': completionBonus,
-              'accuracyBonus': accuracyBonus,
-            },
-          ),
-        );
-        if (awardedSongRankStar) {
-          unawaited(
-            UserEventLogStore.log(
-              username: widget.session.username,
-              type: UserEventType.songRankStarAwarded,
-              outcome: true,
-              songId: _selectedSong.id,
-              byHeartMode: _isByHeartMode,
-              accuracy: accuracy,
-            ),
-          );
-        }
-        if (!mounted) return;
-
-        final completedWithoutMistakes = _mistakesThisRun == 0;
-        final shouldEnterByHeart = !_isByHeartMode && completedWithoutMistakes;
-        setState(() {
-          _mistakesThisRun = 0;
-          _wrongChargedNotesThisRun = 0;
-          _mistakeChargedForCurrentSongNote = false;
-          if (shouldEnterByHeart) {
-            _isByHeartMode = true;
-            _byHeartHintNoteId = null;
-            _byHeartMistakesOnCurrentNote = 0;
-          }
-        });
-        if (progressAward.triggeredWeeklyBonus) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Weekly streak bonus unlocked! +20 stars'),
-              duration: Duration(milliseconds: 1300),
-            ),
-          );
-        }
-        if (shouldEnterByHeart) {
-          _triggerSongCompleteOverlay(
-            title: 'Perfect run!',
-            subtitle: 'Now play by heart. +$runStarsAward stars',
-            isBigWin: true,
-          );
-        } else {
-          _triggerSongCompleteOverlay(
-            title: runStarsAward >= 20 ? 'Nice work!' : 'Song Complete!',
-            subtitle: '+$runStarsAward stars',
-            isBigWin: runStarsAward >= 20,
-          );
-        }
+        await _finishSong();
       }
     } else {
       setState(() {

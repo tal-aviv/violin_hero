@@ -2211,6 +2211,88 @@ const List<SongDefinition> kSongLibrary = [
       NoteDuration.quarter, NoteDuration.quarterRest,
     ],
   ),
+  SongDefinition(
+    id: 'go_tell_aunt_rhody',
+    title: 'Go Tell Aunt Rhody',
+    // "Go tell…" — a speaking/telling icon (person with voice waves).
+    icon: Icons.record_voice_over_rounded,
+    color: Color(0xFF66BB6A),
+    visibility: SongVisibility.admin,
+    // Traditional American folk tune in A major, 4/4. Transcribed via
+    // Audiveris OMR (tools/test_fixtures/gotellauntrhody.musicxml.mxl)
+    // — this score read cleanly (every bar resolves to 4 beats), and
+    // the pitches were verified by hand. Form is A–B–A across 12 bars,
+    // all on the A and E strings (range A4 → F#5):
+    //   • A  (M1–M4):  opening phrase, cadences on A
+    //   • B  (M5–M8):  rises to F#5, cadences on E
+    //   • A  (M9–M12): exact repeat of M1–M4
+    noteIds: [
+      // ── A section ──
+      // M1: C# C# B A A
+      'C#5_A', 'C#5_A', 'B4_A', 'A4_A', 'A4_A',
+      // M2: B B C# B A
+      'B4_A', 'B4_A', 'C#5_A', 'B4_A', 'A4_A',
+      // M3: E E D C# C#
+      'E5_E', 'E5_E', 'D5_A', 'C#5_A', 'C#5_A',
+      // M4: B A B C# A(half)
+      'B4_A', 'A4_A', 'B4_A', 'C#5_A', 'A4_A',
+      // ── B section ──
+      // M5: C# C# D E E
+      'C#5_A', 'C#5_A', 'D5_A', 'E5_E', 'E5_E',
+      // M6: F# F# E D C#
+      'F#5_E', 'F#5_E', 'E5_E', 'D5_A', 'C#5_A',
+      // M7: C# C# D E E
+      'C#5_A', 'C#5_A', 'D5_A', 'E5_E', 'E5_E',
+      // M8: F# F# E(half)
+      'F#5_E', 'F#5_E', 'E5_E',
+      // ── A section (repeat of M1–M4) ──
+      // M9: C# C# B A A
+      'C#5_A', 'C#5_A', 'B4_A', 'A4_A', 'A4_A',
+      // M10: B B C# B A
+      'B4_A', 'B4_A', 'C#5_A', 'B4_A', 'A4_A',
+      // M11: E E D C# C#
+      'E5_E', 'E5_E', 'D5_A', 'C#5_A', 'C#5_A',
+      // M12: B A B C# A(half)
+      'B4_A', 'A4_A', 'B4_A', 'C#5_A', 'A4_A',
+    ],
+    noteDurations: [
+      // M1: q e e q q
+      NoteDuration.quarter, NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.quarter, NoteDuration.quarter,
+      // M2: q q e e q
+      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.quarter,
+      // M3: q e e q q
+      NoteDuration.quarter, NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.quarter, NoteDuration.quarter,
+      // M4: e e e e half
+      NoteDuration.eighth, NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.half,
+      // M5: q e e q q
+      NoteDuration.quarter, NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.quarter, NoteDuration.quarter,
+      // M6: q q e e q
+      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.quarter,
+      // M7: q e e q q
+      NoteDuration.quarter, NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.quarter, NoteDuration.quarter,
+      // M8: q q half
+      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.half,
+      // M9: q e e q q
+      NoteDuration.quarter, NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.quarter, NoteDuration.quarter,
+      // M10: q q e e q
+      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.quarter,
+      // M11: q e e q q
+      NoteDuration.quarter, NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.quarter, NoteDuration.quarter,
+      // M12: e e e e half
+      NoteDuration.eighth, NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.half,
+    ],
+  ),
 ];
 
 class GameNote {

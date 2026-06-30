@@ -5418,6 +5418,22 @@ class _SongLearningScreenState extends State<SongLearningScreen> {
   /// hit-test, and rendering branches all check the same condition.
   bool get _isCurrentRest => _currentNoteDuration.spec.isRest;
 
+  /// What the violin neck should render. During a rest there's no target
+  /// to aim at, so instead of dimming/recoloring the board we keep the
+  /// most recently shown pitched note frozen in place — the fingerboard
+  /// doesn't change at all when a rest begins; taps are simply ignored
+  /// (see the `IgnorePointer` in the rest branch) until the rest elapses
+  /// and the next note loads. Returns `null` only if the song opens on a
+  /// rest, in which case the board renders neutral.
+  GameNote? get _neckDisplayNote {
+    if (!_isCurrentRest) return _currentNote;
+    for (var i = _songIndex - 1; i >= 0; i--) {
+      final note = _songNotes[i];
+      if (note != null) return note;
+    }
+    return null;
+  }
+
   bool _showHintFor(String noteId) {
     final isMastered = _mastered[noteId] ?? false;
     final hideHint = _hideHintForNote[noteId] ?? false;
@@ -6034,30 +6050,32 @@ class _SongLearningScreenState extends State<SongLearningScreen> {
                       width: neckViewportWidth,
                       child: Padding(
                         padding: const EdgeInsets.only(right: 8, top: 0, bottom: 10),
-                        // While the current slot is a rest the neck is
-                        // dimmed and ignores taps — it has no target
-                        // for the player to aim at. The auto-advance
-                        // timer takes the slot to the next note.
+                        // While the current slot is a rest the neck
+                        // ignores taps but is left visually unchanged —
+                        // the most recently shown note stays frozen in
+                        // place (no dim, no recolor). The auto-advance
+                        // timer takes the slot to the next note, which
+                        // becomes playable once the rest elapses.
                         child: _isCurrentRest
                             ? IgnorePointer(
-                                child: Opacity(
-                                  opacity: 0.35,
-                                  child: _VerticalViolinNeckCard(
-                                    key: ValueKey(
-                                      '${_selectedSong.id}_${_songIndex}_rest',
-                                    ),
-                                    neckHeight: neckHeight,
-                                    neckWidth: neckWidth,
-                                    // Sentinel "no-op" target — the
-                                    // painter still draws strings/frets
-                                    // but no hint marker fires.
-                                    targetFingerNumber: 0,
-                                    targetStringIndex: 0,
-                                    targetLowSecondFinger: false,
-                                    showHintColors: false,
-                                    hintColor: const Color(0xFF111111),
-                                    onPlacement: _onFingerPlacement,
+                                child: _VerticalViolinNeckCard(
+                                  key: ValueKey(
+                                    '${_selectedSong.id}_rest_after_'
+                                    '${_neckDisplayNote?.id ?? 'start'}',
                                   ),
+                                  neckHeight: neckHeight,
+                                  neckWidth: neckWidth,
+                                  targetFingerNumber:
+                                      _neckDisplayNote?.fingerNumber ?? 0,
+                                  targetStringIndex:
+                                      _neckDisplayNote?.stringIndex ?? 0,
+                                  targetLowSecondFinger:
+                                      _neckDisplayNote?.lowSecondFinger ?? false,
+                                  showHintColors:
+                                      _neckDisplayNote != null && _showHintColors,
+                                  hintColor: _neckDisplayNote?.hintColor ??
+                                      const Color(0xFF111111),
+                                  onPlacement: _onFingerPlacement,
                                 ),
                               )
                             : _VerticalViolinNeckCard(

@@ -2119,9 +2119,98 @@ const List<SongDefinition> kSongLibrary = [
   // To promote a song to the public library: change its `visibility`
   // to `SongVisibility.public` (or just remove the field — public is
   // the default). No other code changes needed.
-  //
-  // (No drafts in flight right now — append new `SongDefinition`
-  // entries with `visibility: SongVisibility.admin` here.)
+  SongDefinition(
+    id: 'song_of_the_wind',
+    title: 'Song of the Wind',
+    icon: Icons.air_rounded,
+    color: Color(0xFF5DADE2),
+    visibility: SongVisibility.admin,
+    // Suzuki Book 1 #3, A major, 2/4 time. Pitches recovered via
+    // Audiveris OMR (see tools/test_fixtures/songofthewind.musicxml),
+    // rhythm dictated by hand because Audiveris consistently misread
+    // straight beam-groups as triplets and dropped the quarter-rest
+    // cadence on the half-bars (M4 / M6). Plays through once — the
+    // overarching ‖: ... :‖ that would loop the whole tune back to
+    // the start is dropped, but every internal echo (M5–M6 echoing
+    // M3–M4, M11–M13 echoing M7–M9) is preserved exactly as written.
+    // 14 bars of 2/4 = 28 beats = 49 slots:
+    //   • M1–M4:   12 eighths + Q + QR        (first phrase)
+    //   • M5–M6:   4 eighths  + Q + QR        (= echo of M3 + M4)
+    //   • M7–M10:  14 eighths + Q             (second phrase)
+    //   • M11–M14: 12 eighths + Q + QR        (= echo of M7–M10
+    //                                          cadencing on A4)
+    noteIds: [
+      // ── M1 ── A B C# D, all eighths on the A string
+      'A4_A', 'B4_A', 'C#5_A', 'D5_A',
+      // ── M2 ── E E E E
+      'E5_E', 'E5_E', 'E5_E', 'E5_E',
+      // ── M3 ── F# D A F#
+      'F#5_E', 'D5_A', 'A5_E', 'F#5_E',
+      // ── M4 ── E (quarter) + quarter rest
+      'E5_E', '',
+      // ── M5 ── F# D A F#  (= M3)
+      'F#5_E', 'D5_A', 'A5_E', 'F#5_E',
+      // ── M6 ── E (quarter) + quarter rest  (= M4)
+      'E5_E', '',
+      // ── M7 ── E D D D
+      'E5_E', 'D5_A', 'D5_A', 'D5_A',
+      // ── M8 ── D C# C# C#
+      'D5_A', 'C#5_A', 'C#5_A', 'C#5_A',
+      // ── M9 ── C# B B B
+      'C#5_A', 'B4_A', 'B4_A', 'B4_A',
+      // ── M10 ── A C# (eighths) + E (quarter)
+      'A4_A', 'C#5_A', 'E5_E',
+      // ── M11 ── E D D D  (= M7)
+      'E5_E', 'D5_A', 'D5_A', 'D5_A',
+      // ── M12 ── D C# C# C#  (= M8)
+      'D5_A', 'C#5_A', 'C#5_A', 'C#5_A',
+      // ── M13 ── C# B B B  (= M9)
+      'C#5_A', 'B4_A', 'B4_A', 'B4_A',
+      // ── M14 ── A (quarter) + quarter rest
+      'A4_A', '',
+    ],
+    noteDurations: [
+      // M1: 4 eighths
+      NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.eighth,
+      // M2: 4 eighths
+      NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.eighth,
+      // M3: 4 eighths
+      NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.eighth,
+      // M4: Q + QR
+      NoteDuration.quarter, NoteDuration.quarterRest,
+      // M5: 4 eighths
+      NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.eighth,
+      // M6: Q + QR
+      NoteDuration.quarter, NoteDuration.quarterRest,
+      // M7: 4 eighths
+      NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.eighth,
+      // M8: 4 eighths
+      NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.eighth,
+      // M9: 4 eighths
+      NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.eighth,
+      // M10: 2 eighths + Q
+      NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.quarter,
+      // M11: 4 eighths
+      NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.eighth,
+      // M12: 4 eighths
+      NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.eighth,
+      // M13: 4 eighths
+      NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.eighth,
+      // M14: Q + QR
+      NoteDuration.quarter, NoteDuration.quarterRest,
+    ],
+  ),
 ];
 
 class GameNote {
@@ -6433,42 +6522,33 @@ class _StaffPainter extends CustomPainter {
     // curl must sit exactly here, matching real sheet-music engraving.
     final gLineY = staffBottomY - spacing;
 
-    const clefStyle = TextStyle(
-      color: Color(0xFF111111),
-      fontSize: 100,
-      fontWeight: FontWeight.w400,
-    );
+    // Treble (G) clef rendered from the bundled Bravura SMuFL font
+    // (gClef = U+E050), matching the rest glyphs for consistent
+    // engraving. SMuFL anchors the clef's baseline (y = 0) on the
+    // G line — the 2nd staff line from the bottom — and uses 1000
+    // units/em = 4 staff spaces. So a font size of 4 × spacing with
+    // the baseline on the G line reproduces standard placement: the
+    // spiral curls around the G line, the tail hangs below the staff,
+    // and the flourish rises above it.
     final clefText = TextPainter(
-      text: TextSpan(text: '𝄞', style: clefStyle),
+      text: TextSpan(
+        text: '\u{E050}',
+        style: TextStyle(
+          color: const Color(0xFF111111),
+          fontFamily: 'Bravura',
+          fontSize: spacing * 4,
+        ),
+      ),
       textDirection: TextDirection.ltr,
     )..layout();
 
-    // Scale the clef so its lower loop reaches the bottom E line.
-    // The 𝄞 glyph's lower loop turns around at roughly 82 % of the
-    // glyph height from the top. With the curl at 69.2 %, the loop-
-    // to-curl span = 0.128 of glyph height.  We need that span to
-    // equal 1 staff-space (G→E), giving totalH ≈ 1/0.128 ≈ 7.8 sp.
-    final targetClefHeight = spacing * 7.8;
-    final heightScale = targetClefHeight / max(1.0, clefText.height);
-    final maxClefWidth = spacing * 3.5;
-    final widthScale = maxClefWidth / max(1.0, clefText.width);
-    final clefScale = min(heightScale, widthScale);
-
-    // The inner curl of the 𝄞 glyph sits at this fraction from the
-    // glyph's top. Derived from the standard proportions:
-    //   top-overshoot 1.5 sp + staff 3 sp to G-line = 4.5 sp from top,
-    //   total 6.5 sp → 4.5 / 6.5 ≈ 0.692.
-    const curlFromTop = 0.692;
-    final scaledH = clefText.height * clefScale;
+    final clefBaselineDist =
+        clefText.computeDistanceToActualBaseline(TextBaseline.alphabetic) ??
+            clefText.height;
     final clefX = staffLeftX + 2;
-    final clefY = gLineY - scaledH * curlFromTop;
-
-    canvas.save();
-    canvas.translate(clefX, clefY);
-    canvas.scale(clefScale, clefScale);
-    clefText.paint(canvas, Offset.zero);
-    canvas.restore();
-    final clefRightX = clefX + clefText.width * clefScale;
+    final clefY = gLineY - clefBaselineDist;
+    clefText.paint(canvas, Offset(clefX, clefY));
+    final clefRightX = clefX + clefText.width;
 
     final bottomLineY = staffBottomY;
 
@@ -6734,14 +6814,25 @@ class _StaffPainter extends CustomPainter {
   }
 
   /// Paints the rest glyph for the current `durationSpec`, plus an
-  /// augmentation dot for dotted rests. The glyph itself comes from
-  /// `durationSpec.restGlyph` (a SMuFL/Unicode musical-symbol code
-  /// point) and is rendered through `TextPainter`, the same pipeline
-  /// used for the treble clef.
+  /// augmentation dot for dotted rests.
   ///
-  /// Rests sit slightly closer to the clef than note heads do — there's
-  /// no need to leave room for an accidental — and span the height of
-  /// the staff so they read clearly even at small sizes.
+  /// Rests are rendered from the bundled **Bravura** SMuFL music font
+  /// (see `pubspec.yaml` / `fonts/Bravura.otf`) — the same reference
+  /// font professional engraving uses — so each rest is an authentic
+  /// glyph rather than a hand-drawn approximation. Earlier attempts
+  /// drew the rests as `Canvas` paths because no system font on the
+  /// target platforms covers the Unicode Musical-Symbols rests
+  /// (U+1D13B–F); Bravura provides them at the SMuFL private-use code
+  /// points instead.
+  ///
+  /// Positioning uses SMuFL conventions: glyph metrics are 1000 units
+  /// per em = 4 staff spaces, and the glyph baseline (y = 0) sits on
+  /// the MIDDLE staff line. Drawing each glyph with its baseline on
+  /// the middle line therefore reproduces standard placement:
+  ///   • quarter / eighth / sixteenth — straddle the middle line;
+  ///   • half rest — sits on the middle line;
+  ///   • whole rest — hangs from the 4th line (one space above the
+  ///     middle), so its baseline is raised by one staff space.
   void _paintRest({
     required Canvas canvas,
     required double clefRightX,
@@ -6750,66 +6841,61 @@ class _StaffPainter extends CustomPainter {
     required double staffBottomY,
     required double spacing,
   }) {
-    final glyph = durationSpec.restGlyph;
+    if (!durationSpec.isRest) return;
+
+    final staffMidY = (staffTopY + staffBottomY) / 2;
+    final restCenterX = (clefRightX + staffRightX) / 2;
+
+    // Map the internal Unicode rest code point to the corresponding
+    // Bravura SMuFL glyph, and pick the baseline anchor.
+    String? glyph;
+    var baselineY = staffMidY;
+    switch (durationSpec.restGlyph) {
+      case '\u{1D13B}': // whole rest → restWhole, hangs from line 4
+        glyph = '\u{E4E3}';
+        baselineY = staffMidY - spacing;
+        break;
+      case '\u{1D13C}': // half rest → restHalf, sits on the middle line
+        glyph = '\u{E4E4}';
+        break;
+      case '\u{1D13D}': // quarter rest → restQuarter
+        glyph = '\u{E4E5}';
+        break;
+      case '\u{1D13E}': // eighth rest → rest8th
+        glyph = '\u{E4E6}';
+        break;
+      case '\u{1D13F}': // sixteenth rest → rest16th
+        glyph = '\u{E4E7}';
+        break;
+    }
     if (glyph == null) return;
 
-    final restStyle = TextStyle(
-      color: noteColor,
-      fontSize: 80,
-      fontWeight: FontWeight.w400,
-    );
+    // 1 em (1000 SMuFL units) spans 4 staff spaces, so a font size of
+    // 4 × spacing maps one staff space to `spacing` logical pixels.
     final restText = TextPainter(
-      text: TextSpan(text: glyph, style: restStyle),
+      text: TextSpan(
+        text: glyph,
+        style: TextStyle(
+          fontFamily: 'Bravura',
+          fontSize: spacing * 4,
+          color: noteColor,
+        ),
+      ),
       textDirection: TextDirection.ltr,
     )..layout();
 
-    // Target glyph height ≈ 4 staff spaces (the height of the 5-line
-    // staff). Quarter rest naturally spans roughly that range; we let
-    // half/whole/eighth scale to the same metric for visual consistency.
-    final targetHeight = spacing * 4;
-    final scale = targetHeight / max(1.0, restText.height);
-    final scaledW = restText.width * scale;
-    final scaledH = restText.height * scale;
-
-    final staffMidY = (staffTopY + staffBottomY) / 2;
-    // Center horizontally in the space remaining after the clef.
-    final restCenterX = (clefRightX + staffRightX) / 2;
-    final glyphX = restCenterX - scaledW / 2;
-
-    // Vertical placement varies by rest type:
-    //   • Whole rest (𝄻): hangs from the 4th line (one space above
-    //     middle).
-    //   • Half rest (𝄼): sits on the middle line.
-    //   • Quarter / eighth / sixteenth rest (𝄽 / 𝄾 / 𝄿): centered on
-    //     the middle line.
-    // The TextPainter glyph metrics aren't perfectly consistent across
-    // platforms, so we anchor each variant to the staff with a small
-    // hand-tuned offset and let the glyph fall around it.
-    double glyphY;
-    switch (durationSpec.restGlyph) {
-      case '\u{1D13B}': // whole rest — hangs from line 4 (above middle)
-        glyphY = staffMidY - spacing - scaledH * 0.55;
-        break;
-      case '\u{1D13C}': // half rest — sits on the middle line
-        glyphY = staffMidY - scaledH * 0.55;
-        break;
-      default: // quarter / eighth rest — centered on the middle line
-        glyphY = staffMidY - scaledH * 0.5;
-        break;
-    }
-
-    canvas.save();
-    canvas.translate(glyphX, glyphY);
-    canvas.scale(scale, scale);
-    restText.paint(canvas, Offset.zero);
-    canvas.restore();
+    // Place the glyph's baseline on the chosen staff line and center
+    // it horizontally in the space after the clef.
+    final baselineDist =
+        restText.computeDistanceToActualBaseline(TextBaseline.alphabetic) ??
+            restText.height;
+    final glyphX = restCenterX - restText.width / 2;
+    final glyphY = baselineY - baselineDist;
+    restText.paint(canvas, Offset(glyphX, glyphY));
 
     if (durationSpec.isDotted) {
-      // Augmentation dot for dotted rests. Sits to the right of the
-      // glyph at roughly the third-line height, matching engraving
-      // convention.
       final dotRadius = max(2.0, spacing * 0.18);
-      final dotX = glyphX + scaledW + spacing * 0.45;
+      final dotX = restCenterX + restText.width / 2 + spacing * 0.35;
       final dotY = staffMidY;
       canvas.drawCircle(
         Offset(dotX, dotY),

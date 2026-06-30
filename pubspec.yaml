@@ -71,22 +71,13 @@ flutter:
   # For details regarding adding assets from package dependencies, see
   # https://flutter.dev/to/asset-from-package
 
-  # To add custom fonts to your application, add a fonts section here,
-  # in this "flutter" section. Each entry in this list should have a
-  # "family" key with the font family name, and a "fonts" key with a
-  # list giving the asset and other descriptors for the font. For
-  # example:
-  # fonts:
-  #   - family: Schyler
-  #     fonts:
-  #       - asset: fonts/Schyler-Regular.ttf
-  #       - asset: fonts/Schyler-Italic.ttf
-  #         style: italic
-  #   - family: Trajan Pro
-  #     fonts:
-  #       - asset: fonts/TrajanPro.ttf
-  #       - asset: fonts/TrajanPro_Bold.ttf
-  #         weight: 700
-  #
+  # Bravura — the reference SMuFL music-notation font (SIL Open Font
+  # License). Used to render rest glyphs (and any other engraving
+  # symbols) as authentic notation. See _paintRest in lib/main.dart.
+  fonts:
+    - family: Bravura
+      fonts:
+        - asset: fonts/Bravura.otf
+
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package

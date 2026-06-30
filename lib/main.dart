@@ -2293,6 +2293,99 @@ const List<SongDefinition> kSongLibrary = [
       NoteDuration.eighth, NoteDuration.half,
     ],
   ),
+  SongDefinition(
+    id: 'o_come_little_children',
+    title: 'O Come Little Children',
+    // A gentle Christmas carol — children gathering at the manger.
+    icon: Icons.child_care_rounded,
+    color: Color(0xFFE57373),
+    visibility: SongVisibility.admin,
+    // Christmas carol (J.A.P. Schulz, "Ihr Kinderlein, kommet") in A major,
+    // 2/4. Transcribed via Audiveris OMR
+    // (tools/test_fixtures/ocomelittlechildren.musicxml.mxl). Audiveris put a
+    // spurious *bass* clef on the first line (M1–M4) and only switched to the
+    // correct treble clef at M5, so the first line's pitches were reinterpreted
+    // up by an octave-and-a-sixth. The proof it's right: after the fix, line 1
+    // (M1–M4) becomes identical to line 2 (M5–M8) — exactly as the carol is
+    // written (same tune, two verses of words). Each 2/4 bar = quarter + two
+    // eighths; opens with an eighth-note pickup and ends on a dotted quarter.
+    // Range A4 → A5, all on the A and E strings.
+    noteIds: [
+      // pickup
+      'E5_E',
+      // ── Line 1 (A): "O come, little children…" ──
+      // M1: E C# E
+      'E5_E', 'C#5_A', 'E5_E',
+      // M2: E C# E
+      'E5_E', 'C#5_A', 'E5_E',
+      // M3: D B B
+      'D5_A', 'B4_A', 'B4_A',
+      // M4: C# (rest) E
+      'C#5_A', '', 'E5_E',
+      // ── Line 2 (A): "to Bethlehem haste…" ──
+      // M5: E C# E
+      'E5_E', 'C#5_A', 'E5_E',
+      // M6: E C# E
+      'E5_E', 'C#5_A', 'E5_E',
+      // M7: D B B
+      'D5_A', 'B4_A', 'B4_A',
+      // M8: C# (rest) C#
+      'C#5_A', '', 'C#5_A',
+      // ── Line 3 (B) ──
+      // M9: B B B
+      'B4_A', 'B4_A', 'B4_A',
+      // M10: D D D
+      'D5_A', 'D5_A', 'D5_A',
+      // M11: C# C# C#
+      'C#5_A', 'C#5_A', 'C#5_A',
+      // M12: F# (rest) F#
+      'F#5_E', '', 'F#5_E',
+      // M13: E E E  (open E string)
+      'E5_E', 'E5_E', 'E5_E',
+      // M14: A E C#  (A on the open E string, the high point)
+      'A5_E', 'E5_E', 'C#5_A',
+      // M15: D B B
+      'D5_A', 'B4_A', 'B4_A',
+      // M16: A (dotted quarter, final)
+      'A4_A',
+    ],
+    noteDurations: [
+      // pickup
+      NoteDuration.eighth,
+      // M1: q e e
+      NoteDuration.quarter, NoteDuration.eighth, NoteDuration.eighth,
+      // M2: q e e
+      NoteDuration.quarter, NoteDuration.eighth, NoteDuration.eighth,
+      // M3: q e e
+      NoteDuration.quarter, NoteDuration.eighth, NoteDuration.eighth,
+      // M4: q eRest e
+      NoteDuration.quarter, NoteDuration.eighthRest, NoteDuration.eighth,
+      // M5: q e e
+      NoteDuration.quarter, NoteDuration.eighth, NoteDuration.eighth,
+      // M6: q e e
+      NoteDuration.quarter, NoteDuration.eighth, NoteDuration.eighth,
+      // M7: q e e
+      NoteDuration.quarter, NoteDuration.eighth, NoteDuration.eighth,
+      // M8: q eRest e
+      NoteDuration.quarter, NoteDuration.eighthRest, NoteDuration.eighth,
+      // M9: q e e
+      NoteDuration.quarter, NoteDuration.eighth, NoteDuration.eighth,
+      // M10: q e e
+      NoteDuration.quarter, NoteDuration.eighth, NoteDuration.eighth,
+      // M11: q e e
+      NoteDuration.quarter, NoteDuration.eighth, NoteDuration.eighth,
+      // M12: q eRest e
+      NoteDuration.quarter, NoteDuration.eighthRest, NoteDuration.eighth,
+      // M13: q e e
+      NoteDuration.quarter, NoteDuration.eighth, NoteDuration.eighth,
+      // M14: q e e
+      NoteDuration.quarter, NoteDuration.eighth, NoteDuration.eighth,
+      // M15: q e e
+      NoteDuration.quarter, NoteDuration.eighth, NoteDuration.eighth,
+      // M16: dotted quarter
+      NoteDuration.dottedQuarter,
+    ],
+  ),
 ];
 
 class GameNote {

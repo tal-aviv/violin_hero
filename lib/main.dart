@@ -2622,6 +2622,298 @@ class GameNote {
   final bool lowSecondFinger;
 }
 
+/// The single source of truth for every playable note in the app. Both
+/// learning screens derive their working pools from this list rather than
+/// each carrying a hand-maintained copy (which previously drifted out of
+/// sync). Order matters: the free-play fallback returns the first entry,
+/// so the D string stays first.
+///
+///  * Learn Notes (free play) uses every note **except** `C5_A` — the
+///    low-2 C natural only appears in song material.
+///  * Learn Songs uses every note **except** the G-string notes, which no
+///    current song reaches.
+///
+/// Keeping both as `.where(...)` views over this list means a note is
+/// defined exactly once, so the two screens can never disagree again.
+const List<GameNote> kGameNotePool = [
+  // D / Re string (D string index: 1)
+  GameNote(
+    id: 'D4_D',
+    letterLabel: 'D',
+    solfegeLabel: 'Re',
+    staffStep: -1,
+    fingerNumber: 0,
+    stringIndex: 1,
+    frequencyHz: 293.66,
+    hintColor: Color(0xFF58A6FF),
+  ),
+  GameNote(
+    id: 'E4_D',
+    letterLabel: 'E',
+    solfegeLabel: 'Mi',
+    staffStep: 0,
+    fingerNumber: 1,
+    stringIndex: 1,
+    frequencyHz: 329.63,
+    hintColor: Color(0xFF8F7CFF),
+  ),
+  GameNote(
+    id: 'F#4_D',
+    letterLabel: 'F#',
+    solfegeLabel: 'Fa',
+    staffStep: 1,
+    fingerNumber: 2,
+    stringIndex: 1,
+    frequencyHz: 369.99,
+    hintColor: Color(0xFFFF8A80),
+  ),
+  GameNote(
+    id: 'G4_D',
+    letterLabel: 'G',
+    solfegeLabel: 'Sol',
+    staffStep: 2,
+    fingerNumber: 3,
+    stringIndex: 1,
+    frequencyHz: 392.00,
+    hintColor: Color(0xFF50D6A5),
+  ),
+  // A / La string (A string index: 2)
+  GameNote(
+    id: 'A4_A',
+    letterLabel: 'A',
+    solfegeLabel: 'La',
+    staffStep: 3,
+    fingerNumber: 0,
+    stringIndex: 2,
+    frequencyHz: 440.00,
+    hintColor: Color(0xFFFFA726),
+  ),
+  GameNote(
+    id: 'B4_A',
+    letterLabel: 'B',
+    solfegeLabel: 'Si',
+    staffStep: 4,
+    fingerNumber: 1,
+    stringIndex: 2,
+    frequencyHz: 493.88,
+    hintColor: Color(0xFF7E57C2),
+  ),
+  // C natural on the A string. Same staff position as C#5 (no
+  // accidental), but the 2nd finger lands a half-step closer to the
+  // 1st finger — like on a real violin. The `lowSecondFinger: true`
+  // flag tells the touch UI to enforce that physical position.
+  GameNote(
+    id: 'C5_A',
+    letterLabel: 'C',
+    solfegeLabel: 'Do',
+    staffStep: 5,
+    fingerNumber: 2,
+    stringIndex: 2,
+    frequencyHz: 523.25,
+    hintColor: Color(0xFFFFD54F),
+    lowSecondFinger: true,
+  ),
+  GameNote(
+    id: 'C#5_A',
+    letterLabel: 'C#',
+    solfegeLabel: 'Do#',
+    staffStep: 5,
+    fingerNumber: 2,
+    stringIndex: 2,
+    frequencyHz: 554.37,
+    hintColor: Color(0xFF26A69A),
+  ),
+  GameNote(
+    id: 'D5_A',
+    letterLabel: 'D',
+    solfegeLabel: 'Re',
+    staffStep: 6,
+    fingerNumber: 3,
+    stringIndex: 2,
+    frequencyHz: 587.33,
+    hintColor: Color(0xFF42A5F5),
+  ),
+  // E / Mi string (E string index: 3)
+  GameNote(
+    id: 'E5_E',
+    letterLabel: 'E',
+    solfegeLabel: 'Mi',
+    staffStep: 7,
+    fingerNumber: 0,
+    stringIndex: 3,
+    frequencyHz: 659.25,
+    hintColor: Color(0xFFEC407A),
+  ),
+  GameNote(
+    id: 'F#5_E',
+    letterLabel: 'F#',
+    solfegeLabel: 'Fa#',
+    staffStep: 8,
+    fingerNumber: 1,
+    stringIndex: 3,
+    frequencyHz: 739.99,
+    hintColor: Color(0xFFFF7043),
+  ),
+  // G# / A on the E string — needed for any A-major piece (e.g.
+  // Suzuki "Song of the Wind"). G# is the high-2 finger position on
+  // the E string, A is the 3rd finger.
+  GameNote(
+    id: 'G#5_E',
+    letterLabel: 'G#',
+    solfegeLabel: 'Sol#',
+    staffStep: 9,
+    fingerNumber: 2,
+    stringIndex: 3,
+    frequencyHz: 830.61,
+    hintColor: Color(0xFFAB47BC),
+  ),
+  GameNote(
+    id: 'A5_E',
+    letterLabel: 'A',
+    solfegeLabel: 'La',
+    staffStep: 10,
+    fingerNumber: 3,
+    stringIndex: 3,
+    frequencyHz: 880.00,
+    hintColor: Color(0xFFFFB300),
+  ),
+  // G / Sol string (G string index: 0)
+  GameNote(
+    id: 'G3_G',
+    letterLabel: 'G',
+    solfegeLabel: 'Sol',
+    staffStep: -5,
+    fingerNumber: 0,
+    stringIndex: 0,
+    frequencyHz: 196.00,
+    hintColor: Color(0xFF66BB6A),
+  ),
+  GameNote(
+    id: 'A3_G',
+    letterLabel: 'A',
+    solfegeLabel: 'La',
+    staffStep: -4,
+    fingerNumber: 1,
+    stringIndex: 0,
+    frequencyHz: 220.00,
+    hintColor: Color(0xFFFFCA28),
+  ),
+  GameNote(
+    id: 'B3_G',
+    letterLabel: 'B',
+    solfegeLabel: 'Si',
+    staffStep: -3,
+    fingerNumber: 2,
+    stringIndex: 0,
+    frequencyHz: 246.94,
+    hintColor: Color(0xFF7E57C2),
+  ),
+  GameNote(
+    id: 'C4_G',
+    letterLabel: 'C',
+    solfegeLabel: 'Do',
+    staffStep: -2,
+    fingerNumber: 3,
+    stringIndex: 0,
+    frequencyHz: 261.63,
+    hintColor: Color(0xFF26C6DA),
+  ),
+];
+
+/// Shared three-level adaptive-hint bookkeeping used by both the Learn
+/// Notes (free play) and Learn Songs screens. Each concrete screen supplies
+/// its working [adaptiveNotePool]; the *triggers* that promote or demote a
+/// note between levels stay in each screen's play handlers (they legitimately
+/// differ — free play tracks per-string stats, songs track by-heart mode),
+/// but the per-note state maps and the hydration from / persistence to
+/// [_HeroProgressStore] are identical and live here once, so the two modules
+/// can never disagree about a note's mastery.
+mixin _AdaptiveNoteLearning<T extends StatefulWidget> on State<T> {
+  /// The notes this screen tracks adaptive state for.
+  List<GameNote> get adaptiveNotePool;
+
+  late final Map<String, int> _consecutiveCorrect = {
+    for (final note in adaptiveNotePool) note.id: 0,
+  };
+  // Counts only those consecutive correct plays where the note was
+  // already at Level 2 (color hidden) at the start of the play. This is
+  // what gates the Level 2 → 3 transition — a fresh player who gets 3
+  // correct in a row at Level 1 graduates to Level 2 but still needs 3
+  // *more* correct plays *at Level 2* before the name hides. Reset on any
+  // mistake or whenever the hint comes back.
+  late final Map<String, int> _consecutiveCorrectAtLevel2 = {
+    for (final note in adaptiveNotePool) note.id: 0,
+  };
+  late final Map<String, bool> _mastered = {
+    for (final note in adaptiveNotePool) note.id: false,
+  };
+  late final Map<String, bool> _hideHintForNote = {
+    for (final note in adaptiveNotePool) note.id: false,
+  };
+  late final Map<String, int> _mistakesWithoutHint = {
+    for (final note in adaptiveNotePool) note.id: 0,
+  };
+  // Sticky: once a note has reached Level 3, [_nameMastered] stays true
+  // forever even if the name comes back due to mistakes — that way
+  // Level 2.5 → 3 re-mastery uses the lower threshold.
+  late final Map<String, bool> _nameMastered = {
+    for (final note in adaptiveNotePool) note.id: false,
+  };
+  late final Map<String, bool> _hideNoteNameForNote = {
+    for (final note in adaptiveNotePool) note.id: false,
+  };
+  late final Map<String, int> _mistakesWithoutNoteName = {
+    for (final note in adaptiveNotePool) note.id: 0,
+  };
+
+  /// Pulls each note's persisted [NoteAdaptiveState] (mastery + hide flags)
+  /// from [_HeroProgressStore] into the local working maps so progress
+  /// carries across screen entries, modules, and sessions. The store is
+  /// loaded synchronously at app launch, so this usually returns instantly;
+  /// the async branch guards against entering a screen before that load
+  /// completes.
+  Future<void> _hydrateAdaptiveStatesFromStore() async {
+    await _HeroProgressStore.load();
+    if (!mounted) return;
+    var dirty = false;
+    for (final note in adaptiveNotePool) {
+      final state = _HeroProgressStore.noteAdaptiveStateFor(note.id);
+      if (_mastered[note.id] != state.mastered) {
+        _mastered[note.id] = state.mastered;
+        dirty = true;
+      }
+      if (_hideHintForNote[note.id] != state.hideHint) {
+        _hideHintForNote[note.id] = state.hideHint;
+        dirty = true;
+      }
+      if (_nameMastered[note.id] != state.nameMastered) {
+        _nameMastered[note.id] = state.nameMastered;
+        dirty = true;
+      }
+      if (_hideNoteNameForNote[note.id] != state.hideName) {
+        _hideNoteNameForNote[note.id] = state.hideName;
+        dirty = true;
+      }
+    }
+    if (dirty) setState(() {});
+  }
+
+  /// Writes the four-flag adaptive state back to the shared store. Called
+  /// after every level transition (correct or wrong) so the next screen
+  /// entry — same module or different — picks up exactly where the player
+  /// left off. The store call is idempotent and debounces remote sync, so
+  /// calling on every play is cheap.
+  void _persistAdaptiveStateForNote(String noteId) {
+    final state = NoteAdaptiveState(
+      mastered: _mastered[noteId] ?? false,
+      hideHint: _hideHintForNote[noteId] ?? false,
+      nameMastered: _nameMastered[noteId] ?? false,
+      hideName: _hideNoteNameForNote[noteId] ?? false,
+    );
+    unawaited(_HeroProgressStore.saveNoteAdaptiveState(noteId, state));
+  }
+}
+
 class _AuthResult {
   const _AuthResult({this.ok = false, this.error, this.session});
   final bool ok;
@@ -2658,16 +2950,6 @@ class _LocalAuthStore {
     } catch (_) {
       return null;
     }
-  }
-
-  static Future<bool> hasAccount() async {
-    final prefs = await _prefs();
-    final username = prefs.getString(_usernameKey);
-    final password = prefs.getString(_passwordKey);
-    return username != null &&
-        username.isNotEmpty &&
-        password != null &&
-        password.isNotEmpty;
   }
 
   static Future<bool> isLoggedIn() async {
@@ -4568,9 +4850,9 @@ class ViolinGameScreen extends StatefulWidget {
 }
 
 class _AudioPool {
-  _AudioPool({this.size = 4});
+  _AudioPool();
 
-  final int size;
+  static const int size = 4;
   final Map<String, String> _dataUrlCache = {};
 
   final List<AudioPlayer> _nativePlayers = [];
@@ -4623,202 +4905,23 @@ class _AudioPool {
   }
 }
 
-class _ViolinGameScreenState extends State<ViolinGameScreen> {
+class _ViolinGameScreenState extends State<ViolinGameScreen>
+    with _AdaptiveNoteLearning<ViolinGameScreen> {
+  @override
+  List<GameNote> get adaptiveNotePool => _allNotes;
+
   final Random _random = Random();
 
-  static const List<GameNote> _allNotes = [
-    // D / Re string (D string index: 1)
-    GameNote(
-      id: 'D4_D',
-      letterLabel: 'D',
-      solfegeLabel: 'Re',
-      staffStep: -1,
-      fingerNumber: 0,
-      stringIndex: 1,
-      frequencyHz: 293.66,
-      hintColor: Color(0xFF58A6FF),
-    ),
-    GameNote(
-      id: 'E4_D',
-      letterLabel: 'E',
-      solfegeLabel: 'Mi',
-      staffStep: 0,
-      fingerNumber: 1,
-      stringIndex: 1,
-      frequencyHz: 329.63,
-      hintColor: Color(0xFF8F7CFF),
-    ),
-    GameNote(
-      id: 'F#4_D',
-      letterLabel: 'F#',
-      solfegeLabel: 'Fa',
-      staffStep: 1,
-      fingerNumber: 2,
-      stringIndex: 1,
-      frequencyHz: 369.99,
-      hintColor: Color(0xFFFF8A80),
-    ),
-    GameNote(
-      id: 'G4_D',
-      letterLabel: 'G',
-      solfegeLabel: 'Sol',
-      staffStep: 2,
-      fingerNumber: 3,
-      stringIndex: 1,
-      frequencyHz: 392.00,
-      hintColor: Color(0xFF50D6A5),
-    ),
-    // A / La string (A string index: 2)
-    GameNote(
-      id: 'A4_A',
-      letterLabel: 'A',
-      solfegeLabel: 'La',
-      staffStep: 3,
-      fingerNumber: 0,
-      stringIndex: 2,
-      frequencyHz: 440.00,
-      hintColor: Color(0xFFFFA726),
-    ),
-    GameNote(
-      id: 'B4_A',
-      letterLabel: 'B',
-      solfegeLabel: 'Si',
-      staffStep: 4,
-      fingerNumber: 1,
-      stringIndex: 2,
-      frequencyHz: 493.88,
-      hintColor: Color(0xFF7E57C2),
-    ),
-    GameNote(
-      id: 'C#5_A',
-      letterLabel: 'C#',
-      solfegeLabel: 'Do#',
-      staffStep: 5,
-      fingerNumber: 2,
-      stringIndex: 2,
-      frequencyHz: 554.37,
-      hintColor: Color(0xFF26A69A),
-    ),
-    GameNote(
-      id: 'D5_A',
-      letterLabel: 'D',
-      solfegeLabel: 'Re',
-      staffStep: 6,
-      fingerNumber: 3,
-      stringIndex: 2,
-      frequencyHz: 587.33,
-      hintColor: Color(0xFF42A5F5),
-    ),
-    // E / Mi string (E string index: 3)
-    GameNote(
-      id: 'E5_E',
-      letterLabel: 'E',
-      solfegeLabel: 'Mi',
-      staffStep: 7,
-      fingerNumber: 0,
-      stringIndex: 3,
-      frequencyHz: 659.25,
-      hintColor: Color(0xFFEC407A),
-    ),
-    GameNote(
-      id: 'F#5_E',
-      letterLabel: 'F#',
-      solfegeLabel: 'Fa#',
-      staffStep: 8,
-      fingerNumber: 1,
-      stringIndex: 3,
-      frequencyHz: 739.99,
-      hintColor: Color(0xFFFF7043),
-    ),
-    GameNote(
-      id: 'G#5_E',
-      letterLabel: 'G#',
-      solfegeLabel: 'Sol#',
-      staffStep: 9,
-      fingerNumber: 2,
-      stringIndex: 3,
-      frequencyHz: 830.61,
-      hintColor: Color(0xFFAB47BC),
-    ),
-    GameNote(
-      id: 'A5_E',
-      letterLabel: 'A',
-      solfegeLabel: 'La',
-      staffStep: 10,
-      fingerNumber: 3,
-      stringIndex: 3,
-      frequencyHz: 880.00,
-      hintColor: Color(0xFFFFB300),
-    ),
-    // G / Sol string (G string index: 0)
-    GameNote(
-      id: 'G3_G',
-      letterLabel: 'G',
-      solfegeLabel: 'Sol',
-      staffStep: -5,
-      fingerNumber: 0,
-      stringIndex: 0,
-      frequencyHz: 196.00,
-      hintColor: Color(0xFF66BB6A),
-    ),
-    GameNote(
-      id: 'A3_G',
-      letterLabel: 'A',
-      solfegeLabel: 'La',
-      staffStep: -4,
-      fingerNumber: 1,
-      stringIndex: 0,
-      frequencyHz: 220.00,
-      hintColor: Color(0xFFFFCA28),
-    ),
-    GameNote(
-      id: 'B3_G',
-      letterLabel: 'B',
-      solfegeLabel: 'Si',
-      staffStep: -3,
-      fingerNumber: 2,
-      stringIndex: 0,
-      frequencyHz: 246.94,
-      hintColor: Color(0xFF7E57C2),
-    ),
-    GameNote(
-      id: 'C4_G',
-      letterLabel: 'C',
-      solfegeLabel: 'Do',
-      staffStep: -2,
-      fingerNumber: 3,
-      stringIndex: 0,
-      frequencyHz: 261.63,
-      hintColor: Color(0xFF26C6DA),
-    ),
-  ];
+  // Free play exposes every note in [kGameNotePool] except the low-2
+  // `C5_A` (C natural only appears in song material). Derived from the
+  // shared pool so the note set can't drift from Learn Songs.
+  static final List<GameNote> _allNotes = kGameNotePool
+      .where((note) => note.id != 'C5_A')
+      .toList(growable: false);
 
-  final Map<String, int> _consecutiveCorrect = {
-    for (final note in _allNotes) note.id: 0,
-  };
-  // Mirrors the song-learning screen's adaptive system. See the
-  // commentary on [SongLearningScreenState._consecutiveCorrectAtLevel2]
-  // for the reasoning behind the separate Level-2 streak counter and
-  // the three-level progression model.
-  final Map<String, int> _consecutiveCorrectAtLevel2 = {
-    for (final note in _allNotes) note.id: 0,
-  };
-  final Map<String, bool> _mastered = {for (final note in _allNotes) note.id: false};
-  final Map<String, bool> _hideHintForNote = {
-    for (final note in _allNotes) note.id: false,
-  };
-  final Map<String, int> _mistakesWithoutHint = {
-    for (final note in _allNotes) note.id: 0,
-  };
-  final Map<String, bool> _nameMastered = {
-    for (final note in _allNotes) note.id: false,
-  };
-  final Map<String, bool> _hideNoteNameForNote = {
-    for (final note in _allNotes) note.id: false,
-  };
-  final Map<String, int> _mistakesWithoutNoteName = {
-    for (final note in _allNotes) note.id: 0,
-  };
+  // Adaptive per-note state maps (_consecutiveCorrect, _mastered, hide
+  // flags, mistake counters) and their hydrate/persist helpers come from
+  // the shared [_AdaptiveNoteLearning] mixin, keyed by [adaptiveNotePool].
   static const int _mistakesBeforeHintReturns = 2;
   static const int _relearnCorrectToHideHintAgain = 2;
   static const int _correctToHideNoteName = 3;
@@ -4846,47 +4949,6 @@ class _ViolinGameScreenState extends State<ViolinGameScreen> {
     _activeStringIndices = widget.activeStringIndices.toSet().toList()..sort();
     _currentNote = _pickRandomNoteFromSelection();
     _hydrateAdaptiveStatesFromStore();
-  }
-
-  /// Hydrates `_mastered`, `_hideHintForNote`, `_nameMastered`, and
-  /// `_hideNoteNameForNote` from the shared store. See parallel
-  /// implementation on `SongLearningScreenState` — keeping the
-  /// behavior identical across both modules is what makes adaptive
-  /// progress carry over.
-  Future<void> _hydrateAdaptiveStatesFromStore() async {
-    await _HeroProgressStore.load();
-    if (!mounted) return;
-    var dirty = false;
-    for (final note in _allNotes) {
-      final state = _HeroProgressStore.noteAdaptiveStateFor(note.id);
-      if (_mastered[note.id] != state.mastered) {
-        _mastered[note.id] = state.mastered;
-        dirty = true;
-      }
-      if (_hideHintForNote[note.id] != state.hideHint) {
-        _hideHintForNote[note.id] = state.hideHint;
-        dirty = true;
-      }
-      if (_nameMastered[note.id] != state.nameMastered) {
-        _nameMastered[note.id] = state.nameMastered;
-        dirty = true;
-      }
-      if (_hideNoteNameForNote[note.id] != state.hideName) {
-        _hideNoteNameForNote[note.id] = state.hideName;
-        dirty = true;
-      }
-    }
-    if (dirty) setState(() {});
-  }
-
-  void _persistAdaptiveStateForNote(String noteId) {
-    final state = NoteAdaptiveState(
-      mastered: _mastered[noteId] ?? false,
-      hideHint: _hideHintForNote[noteId] ?? false,
-      nameMastered: _nameMastered[noteId] ?? false,
-      hideName: _hideNoteNameForNote[noteId] ?? false,
-    );
-    unawaited(_HeroProgressStore.saveNoteAdaptiveState(noteId, state));
   }
 
   @override
@@ -5305,148 +5367,18 @@ class SongLearningScreen extends StatefulWidget {
   State<SongLearningScreen> createState() => _SongLearningScreenState();
 }
 
-class _SongLearningScreenState extends State<SongLearningScreen> {
+class _SongLearningScreenState extends State<SongLearningScreen>
+    with _AdaptiveNoteLearning<SongLearningScreen> {
+  @override
+  List<GameNote> get adaptiveNotePool => _songNotePool;
+
   static const double _sectionStarAccuracyThreshold = 0.85;
-  static const List<GameNote> _songNotePool = [
-    GameNote(
-      id: 'D4_D',
-      letterLabel: 'D',
-      solfegeLabel: 'Re',
-      staffStep: -1,
-      fingerNumber: 0,
-      stringIndex: 1,
-      frequencyHz: 293.66,
-      hintColor: Color(0xFF58A6FF),
-    ),
-    GameNote(
-      id: 'E4_D',
-      letterLabel: 'E',
-      solfegeLabel: 'Mi',
-      staffStep: 0,
-      fingerNumber: 1,
-      stringIndex: 1,
-      frequencyHz: 329.63,
-      hintColor: Color(0xFF8F7CFF),
-    ),
-    GameNote(
-      id: 'F#4_D',
-      letterLabel: 'F#',
-      solfegeLabel: 'Fa',
-      staffStep: 1,
-      fingerNumber: 2,
-      stringIndex: 1,
-      frequencyHz: 369.99,
-      hintColor: Color(0xFFFF8A80),
-    ),
-    GameNote(
-      id: 'G4_D',
-      letterLabel: 'G',
-      solfegeLabel: 'Sol',
-      staffStep: 2,
-      fingerNumber: 3,
-      stringIndex: 1,
-      frequencyHz: 392.00,
-      hintColor: Color(0xFF50D6A5),
-    ),
-    GameNote(
-      id: 'A4_A',
-      letterLabel: 'A',
-      solfegeLabel: 'La',
-      staffStep: 3,
-      fingerNumber: 0,
-      stringIndex: 2,
-      frequencyHz: 440.00,
-      hintColor: Color(0xFFFFA726),
-    ),
-    GameNote(
-      id: 'B4_A',
-      letterLabel: 'B',
-      solfegeLabel: 'Si',
-      staffStep: 4,
-      fingerNumber: 1,
-      stringIndex: 2,
-      frequencyHz: 493.88,
-      hintColor: Color(0xFF7E57C2),
-    ),
-    // C natural on the A string. Same staff position as C#5 (no
-    // accidental), but the 2nd finger lands a half-step closer to the
-    // 1st finger — like on a real violin. The `lowSecondFinger: true`
-    // flag tells the touch UI to enforce that physical position.
-    GameNote(
-      id: 'C5_A',
-      letterLabel: 'C',
-      solfegeLabel: 'Do',
-      staffStep: 5,
-      fingerNumber: 2,
-      stringIndex: 2,
-      frequencyHz: 523.25,
-      hintColor: Color(0xFFFFD54F),
-      lowSecondFinger: true,
-    ),
-    GameNote(
-      id: 'C#5_A',
-      letterLabel: 'C#',
-      solfegeLabel: 'Do#',
-      staffStep: 5,
-      fingerNumber: 2,
-      stringIndex: 2,
-      frequencyHz: 554.37,
-      hintColor: Color(0xFF26A69A),
-    ),
-    GameNote(
-      id: 'D5_A',
-      letterLabel: 'D',
-      solfegeLabel: 'Re',
-      staffStep: 6,
-      fingerNumber: 3,
-      stringIndex: 2,
-      frequencyHz: 587.33,
-      hintColor: Color(0xFF42A5F5),
-    ),
-    GameNote(
-      id: 'E5_E',
-      letterLabel: 'E',
-      solfegeLabel: 'Mi',
-      staffStep: 7,
-      fingerNumber: 0,
-      stringIndex: 3,
-      frequencyHz: 659.25,
-      hintColor: Color(0xFFEC407A),
-    ),
-    GameNote(
-      id: 'F#5_E',
-      letterLabel: 'F#',
-      solfegeLabel: 'Fa#',
-      staffStep: 8,
-      fingerNumber: 1,
-      stringIndex: 3,
-      frequencyHz: 739.99,
-      hintColor: Color(0xFFFF7043),
-    ),
-    // G# / A on the E string — needed for any A-major piece (e.g.
-    // Suzuki "Song of the Wind"). G# is the high-2 finger position on
-    // the E string, A is the 3rd finger.
-    GameNote(
-      id: 'G#5_E',
-      letterLabel: 'G#',
-      solfegeLabel: 'Sol#',
-      staffStep: 9,
-      fingerNumber: 2,
-      stringIndex: 3,
-      frequencyHz: 830.61,
-      hintColor: Color(0xFFAB47BC),
-    ),
-    GameNote(
-      id: 'A5_E',
-      letterLabel: 'A',
-      solfegeLabel: 'La',
-      staffStep: 10,
-      fingerNumber: 3,
-      stringIndex: 3,
-      frequencyHz: 880.00,
-      hintColor: Color(0xFFFFB300),
-    ),
-  ];
+  // Learn Songs exposes every note in [kGameNotePool] except the G-string
+  // notes (no current song descends that low). Derived from the shared
+  // pool so the note set can't drift from Learn Notes.
+  static final List<GameNote> _songNotePool = kGameNotePool
+      .where((note) => note.stringIndex != 0)
+      .toList(growable: false);
 
   // ── Adaptive hint system ────────────────────────────────────────
   // Per-note progression has three levels, each progressively harder:
@@ -5472,39 +5404,9 @@ class _SongLearningScreenState extends State<SongLearningScreen> {
   static const int _correctToHideNoteName = 3;
   static const int _relearnCorrectToHideNoteNameAgain = 2;
   static const int _mistakesBeforeNoteNameReturns = 2;
-  final Map<String, int> _consecutiveCorrect = {
-    for (final note in _songNotePool) note.id: 0,
-  };
-  // Counts only those consecutive correct plays where the note was
-  // already at Level 2 (color hidden) at the start of the play. This
-  // is what gates the Level 2 → 3 transition — a fresh player who
-  // gets 3 correct in a row at Level 1 graduates to Level 2 but
-  // still needs 3 *more* correct plays *at Level 2* before the name
-  // hides. Reset on any mistake or whenever the hint comes back.
-  final Map<String, int> _consecutiveCorrectAtLevel2 = {
-    for (final note in _songNotePool) note.id: 0,
-  };
-  final Map<String, bool> _mastered = {
-    for (final note in _songNotePool) note.id: false,
-  };
-  final Map<String, bool> _hideHintForNote = {
-    for (final note in _songNotePool) note.id: false,
-  };
-  final Map<String, int> _mistakesWithoutHint = {
-    for (final note in _songNotePool) note.id: 0,
-  };
-  // Sticky: once a note has reached Level 3, [_nameMastered] stays
-  // true forever even if the name comes back due to mistakes — that
-  // way Level 2.5 → 3 re-mastery uses the lower threshold.
-  final Map<String, bool> _nameMastered = {
-    for (final note in _songNotePool) note.id: false,
-  };
-  final Map<String, bool> _hideNoteNameForNote = {
-    for (final note in _songNotePool) note.id: false,
-  };
-  final Map<String, int> _mistakesWithoutNoteName = {
-    for (final note in _songNotePool) note.id: 0,
-  };
+  // Adaptive per-note state maps and their hydrate/persist helpers come
+  // from the shared [_AdaptiveNoteLearning] mixin, keyed by
+  // [adaptiveNotePool] (= [_songNotePool] here).
 
   late final _AudioPool _audioPool;
   final Map<String, Uint8List> _toneCache = {};
@@ -5529,6 +5431,9 @@ class _SongLearningScreenState extends State<SongLearningScreen> {
     super.initState();
     _audioPool = _AudioPool()..init();
     _selectedSong = widget.song;
+    _songNotes = _selectedSong.noteIds
+        .map<GameNote?>((id) => id.isEmpty ? null : _noteById(id))
+        .toList(growable: false);
     _hydrateAdaptiveStatesFromStore();
     // If the song happens to begin with a rest, the player can't act
     // on it — schedule the silent auto-advance after the first frame.
@@ -5537,71 +5442,26 @@ class _SongLearningScreenState extends State<SongLearningScreen> {
     });
   }
 
-  /// Pulls each note's persisted [NoteAdaptiveState] (mastery + hide
-  /// flags) from [_HeroProgressStore] into the local working maps so
-  /// progress carries across screen entries, modules, and sessions.
-  ///
-  /// The store is loaded synchronously during app launch (see
-  /// `_ViolinHeroAppState._loadLoginState`), so in the typical case
-  /// this returns instantly. The async branch protects against
-  /// navigating into a song before the launch-time `load()` completes.
-  Future<void> _hydrateAdaptiveStatesFromStore() async {
-    await _HeroProgressStore.load();
-    if (!mounted) return;
-    var dirty = false;
-    for (final note in _songNotePool) {
-      final state = _HeroProgressStore.noteAdaptiveStateFor(note.id);
-      if (_mastered[note.id] != state.mastered) {
-        _mastered[note.id] = state.mastered;
-        dirty = true;
-      }
-      if (_hideHintForNote[note.id] != state.hideHint) {
-        _hideHintForNote[note.id] = state.hideHint;
-        dirty = true;
-      }
-      if (_nameMastered[note.id] != state.nameMastered) {
-        _nameMastered[note.id] = state.nameMastered;
-        dirty = true;
-      }
-      if (_hideNoteNameForNote[note.id] != state.hideName) {
-        _hideNoteNameForNote[note.id] = state.hideName;
-        dirty = true;
-      }
-    }
-    if (dirty) setState(() {});
-  }
-
-  /// Writes the four-flag adaptive state back to the shared store.
-  /// Called after every level transition (correct or wrong) so the
-  /// next screen entry — same module or different — picks up exactly
-  /// where the player left off. The store call is idempotent and
-  /// debounces remote sync, so calling on every play is cheap.
-  void _persistAdaptiveStateForNote(String noteId) {
-    final state = NoteAdaptiveState(
-      mastered: _mastered[noteId] ?? false,
-      hideHint: _hideHintForNote[noteId] ?? false,
-      nameMastered: _nameMastered[noteId] ?? false,
-      hideName: _hideNoteNameForNote[noteId] ?? false,
-    );
-    unawaited(_HeroProgressStore.saveNoteAdaptiveState(noteId, state));
-  }
-
   @override
   void dispose() {
     _audioPool.dispose();
     super.dispose();
   }
 
-  GameNote _noteById(String id) {
-    return _songNotePool.firstWhere((note) => note.id == id);
-  }
+  /// O(1) id → note lookup, built once from [_songNotePool]. Replaces a
+  /// per-call linear scan.
+  static final Map<String, GameNote> _songNotePoolById = {
+    for (final note in _songNotePool) note.id: note,
+  };
 
-  /// Per-slot resolved notes. Rest slots map to `null` — there's no
-  /// pitched note associated with a rest. Indexing parallels
-  /// [SongDefinition.noteDurations].
-  List<GameNote?> get _songNotes => _selectedSong.noteIds
-      .map<GameNote?>((id) => id.isEmpty ? null : _noteById(id))
-      .toList(growable: false);
+  GameNote _noteById(String id) => _songNotePoolById[id]!;
+
+  /// Per-slot resolved notes, computed once in [initState] — the selected
+  /// song never changes for a screen instance, so there's no need to
+  /// rebuild this list (and re-run a lookup per note) on every access.
+  /// Rest slots map to `null` — there's no pitched note associated with a
+  /// rest. Indexing parallels [SongDefinition.noteDurations].
+  late final List<GameNote?> _songNotes;
 
   /// `null` while the current slot is a rest. UI code should branch on
   /// this — the violin neck is disabled, the hint card is hidden, and
@@ -6696,7 +6556,6 @@ class _ViolinFingerGeometry {
   static const double neckVisualWidthMm = 28;
   static const double totalNeckLengthMm =
       halfSizeStringLengthMm + topPaddingMm + bottomPaddingMm;
-  static const double openStringZoneMm = 40;
 
   static double _distanceFromNutForSemitone(int semitone) {
     return halfSizeStringLengthMm * (1 - 1 / pow(2, semitone / 12));
@@ -6935,8 +6794,7 @@ class _StaffPainter extends CustomPainter {
     )..layout();
 
     final clefBaselineDist =
-        clefText.computeDistanceToActualBaseline(TextBaseline.alphabetic) ??
-            clefText.height;
+        clefText.computeDistanceToActualBaseline(TextBaseline.alphabetic);
     final clefX = staffLeftX + 2;
     final clefY = gLineY - clefBaselineDist;
     clefText.paint(canvas, Offset(clefX, clefY));
@@ -7279,8 +7137,7 @@ class _StaffPainter extends CustomPainter {
     // Place the glyph's baseline on the chosen staff line and center
     // it horizontally in the space after the clef.
     final baselineDist =
-        restText.computeDistanceToActualBaseline(TextBaseline.alphabetic) ??
-            restText.height;
+        restText.computeDistanceToActualBaseline(TextBaseline.alphabetic);
     final glyphX = restCenterX - restText.width / 2;
     final glyphY = baselineY - baselineDist;
     restText.paint(canvas, Offset(glyphX, glyphY));

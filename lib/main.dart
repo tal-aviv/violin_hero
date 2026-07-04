@@ -2396,8 +2396,12 @@ const List<SongDefinition> kSongLibrary = [
     // Suzuki Book 1 (Suzuki), A major, 4/4. Transcribed via Audiveris OMR
     // (tools/test_fixtures/allegro.musicxml.mvt1.mxl). The scan read cleanly
     // except M7, where straight quarter notes were mis-tagged as a triplet
-    // (the parallel bar M3 proves it's four quarters). The A-theme is stated
-    // twice (M1-M4 = M5-M8). Range A4 -> A5 across the A and E strings.
+    // (the parallel bar M3 proves it's four quarters). Full form: M1-M8 are the
+    // A-theme stated twice (M1-M4 = M5-M8); M9-M12 are the contrasting middle
+    // strain (M9 = M10); M13-M16 restate the opening line (= M1-M4). The E in
+    // M12 is notated on the A string (4th finger) with a fermata; the app has
+    // no 4th-finger position or fermata glyph, so it plays as the open E string
+    // held for a half note. Range A4 -> A5 across the A and E strings.
     noteIds: [
       // M1: A A E E
       'A5_E', 'A5_E', 'E5_E', 'E5_E',
@@ -2414,6 +2418,22 @@ const List<SongDefinition> kSongLibrary = [
       // M7: D D C# C#  (fixed from bogus triplets)
       'D5_A', 'D5_A', 'C#5_A', 'C#5_A',
       // M8: B A B C# | A(half)
+      'B4_A', 'A4_A', 'B4_A', 'C#5_A', 'A4_A',
+      // M9: F# F# E A(open)  [E string, drops to open A]
+      'F#5_E', 'F#5_E', 'E5_E', 'A4_A',
+      // M10: F# F# E A(open)  (repeat of M9)
+      'F#5_E', 'F#5_E', 'E5_E', 'A4_A',
+      // M11: F# G# A F#
+      'F#5_E', 'G#5_E', 'A5_E', 'F#5_E',
+      // M12: E C# B(half)  [E notated on A string; fermata on B]
+      'E5_E', 'C#5_A', 'B4_A',
+      // M13: A A E E  (= M1)
+      'A5_E', 'A5_E', 'E5_E', 'E5_E',
+      // M14: F# G# A F# | E E  (= M2)
+      'F#5_E', 'G#5_E', 'A5_E', 'F#5_E', 'E5_E', 'E5_E',
+      // M15: D D C# C#  (= M3)
+      'D5_A', 'D5_A', 'C#5_A', 'C#5_A',
+      // M16: B A B C# | A(half)  (= M4)
       'B4_A', 'A4_A', 'B4_A', 'C#5_A', 'A4_A',
     ],
     noteDurations: [
@@ -2441,6 +2461,29 @@ const List<SongDefinition> kSongLibrary = [
       // M8: e e e e half
       NoteDuration.eighth, NoteDuration.eighth, NoteDuration.eighth,
       NoteDuration.eighth, NoteDuration.half,
+      // M9: q q q q
+      NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.quarter, NoteDuration.quarter,
+      // M10: q q q q
+      NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.quarter, NoteDuration.quarter,
+      // M11: q q q q
+      NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.quarter, NoteDuration.quarter,
+      // M12: q q half
+      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.half,
+      // M13: q q q q
+      NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.quarter, NoteDuration.quarter,
+      // M14: e e e e q q
+      NoteDuration.eighth, NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.quarter, NoteDuration.quarter,
+      // M15: q q q q
+      NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.quarter, NoteDuration.quarter,
+      // M16: e e e e half
+      NoteDuration.eighth, NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.half,
     ],
   ),
   SongDefinition(
@@ -2454,33 +2497,52 @@ const List<SongDefinition> kSongLibrary = [
     // via Audiveris OMR (tools/test_fixtures/longlongago.musicxml.mvt1.mxl).
     // Pitches read cleanly; the rhythm needed light repair (Audiveris misread
     // one eighth as a 16th in M1 and a run as triplets in M5 — both resolve to
-    // the plain "quarter + two eighths" figure the parallel bars use). Form is
-    // two near-identical 4-bar phrases. Range A4 -> E5 across the A and E
-    // strings.
+    // the plain "quarter + two eighths" figure the parallel bars use). Full
+    // 16-bar form: bars 1-8 are the opening strain (two near-identical phrases);
+    // bars 9-12 are the contrasting strain (a 2-bar phrase stated twice, dipping
+    // to a low E on the D string); bars 13-16 restate the closing cadence
+    // (identical to bars 5-8). Range E4 -> E5 across the D, A and E strings.
     noteIds: [
       // M1: A A B C# C# D
       'A4_A', 'A4_A', 'B4_A', 'C#5_A', 'C#5_A', 'D5_A',
-      // M2: E E C#(half)
-      'E5_E', 'E5_E', 'C#5_A',
+      // M2: E F# E C#(half)
+      'E5_E', 'F#5_E', 'E5_E', 'C#5_A',
       // M3: E D C# B(half)
       'E5_E', 'D5_A', 'C#5_A', 'B4_A',
       // M4: D C# B A(half)
       'D5_A', 'C#5_A', 'B4_A', 'A4_A',
       // M5: A A B C# C# D
       'A4_A', 'A4_A', 'B4_A', 'C#5_A', 'C#5_A', 'D5_A',
-      // M6: E E C#(half)
-      'E5_E', 'E5_E', 'C#5_A',
+      // M6: E F# E C#(half)
+      'E5_E', 'F#5_E', 'E5_E', 'C#5_A',
       // M7: E D C# B | C# B
       'E5_E', 'D5_A', 'C#5_A', 'B4_A', 'C#5_A', 'B4_A',
       // M8: A(half)
+      'A4_A',
+      // M9: E D C# B | E(D string) E
+      'E5_E', 'D5_A', 'C#5_A', 'B4_A', 'E4_D', 'E4_D',
+      // M10: D C# B A(half)
+      'D5_A', 'C#5_A', 'B4_A', 'A4_A',
+      // M11: E D C# B | E(D string) E  (repeat of M9)
+      'E5_E', 'D5_A', 'C#5_A', 'B4_A', 'E4_D', 'E4_D',
+      // M12: D C# B A(half)  (repeat of M10)
+      'D5_A', 'C#5_A', 'B4_A', 'A4_A',
+      // M13: A A B C# C# D  (= M5)
+      'A4_A', 'A4_A', 'B4_A', 'C#5_A', 'C#5_A', 'D5_A',
+      // M14: E F# E C#(half)  (= M6)
+      'E5_E', 'F#5_E', 'E5_E', 'C#5_A',
+      // M15: E D C# B | C# B  (= M7)
+      'E5_E', 'D5_A', 'C#5_A', 'B4_A', 'C#5_A', 'B4_A',
+      // M16: A(half)  (= M8)
       'A4_A',
     ],
     noteDurations: [
       // M1: q e e q e e
       NoteDuration.quarter, NoteDuration.eighth, NoteDuration.eighth,
       NoteDuration.quarter, NoteDuration.eighth, NoteDuration.eighth,
-      // M2: q q half
-      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.half,
+      // M2: q e e half
+      NoteDuration.quarter, NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.half,
       // M3: q e e half
       NoteDuration.quarter, NoteDuration.eighth, NoteDuration.eighth,
       NoteDuration.half,
@@ -2490,12 +2552,36 @@ const List<SongDefinition> kSongLibrary = [
       // M5: q e e q e e
       NoteDuration.quarter, NoteDuration.eighth, NoteDuration.eighth,
       NoteDuration.quarter, NoteDuration.eighth, NoteDuration.eighth,
-      // M6: q q half
-      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.half,
+      // M6: q e e half
+      NoteDuration.quarter, NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.half,
       // M7: q e e q e e
       NoteDuration.quarter, NoteDuration.eighth, NoteDuration.eighth,
       NoteDuration.quarter, NoteDuration.eighth, NoteDuration.eighth,
       // M8: half
+      NoteDuration.half,
+      // M9: q e e q e e
+      NoteDuration.quarter, NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.quarter, NoteDuration.eighth, NoteDuration.eighth,
+      // M10: q e e half
+      NoteDuration.quarter, NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.half,
+      // M11: q e e q e e
+      NoteDuration.quarter, NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.quarter, NoteDuration.eighth, NoteDuration.eighth,
+      // M12: q e e half
+      NoteDuration.quarter, NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.half,
+      // M13: q e e q e e
+      NoteDuration.quarter, NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.quarter, NoteDuration.eighth, NoteDuration.eighth,
+      // M14: q e e half
+      NoteDuration.quarter, NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.half,
+      // M15: q e e q e e
+      NoteDuration.quarter, NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.quarter, NoteDuration.eighth, NoteDuration.eighth,
+      // M16: half
       NoteDuration.half,
     ],
   ),

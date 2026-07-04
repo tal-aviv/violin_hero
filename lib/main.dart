@@ -6678,12 +6678,16 @@ class _VerticalViolinNeckCard extends StatefulWidget {
 class _VerticalViolinNeckCardState extends State<_VerticalViolinNeckCard> {
   Offset? _marker;
   int? _selectedString;
+  int? _selectedFinger;
+  bool _selectedLowSecond = false;
 
   void _handleTap(Offset localPosition, Size size) {
     final resolved = _ViolinFingerGeometry.resolveFromTouch(localPosition, size);
     setState(() {
       _marker = resolved.marker;
       _selectedString = resolved.placement.stringIndex;
+      _selectedFinger = resolved.placement.fingerNumber;
+      _selectedLowSecond = resolved.placement.lowSecondVariant;
     });
     widget.onPlacement(resolved.placement);
   }
@@ -6718,6 +6722,8 @@ class _VerticalViolinNeckCardState extends State<_VerticalViolinNeckCard> {
                   painter: _VerticalViolinNeckPainter(
                     marker: _marker,
                     selectedString: _selectedString,
+                    selectedFinger: _selectedFinger,
+                    selectedLowSecond: _selectedLowSecond,
                     targetFingerNumber: widget.targetFingerNumber,
                     targetStringIndex: widget.targetStringIndex,
                     showHintColors: widget.showHintColors,
@@ -7167,6 +7173,8 @@ class _VerticalViolinNeckPainter extends CustomPainter {
   _VerticalViolinNeckPainter({
     required this.marker,
     required this.selectedString,
+    required this.selectedFinger,
+    required this.selectedLowSecond,
     required this.targetFingerNumber,
     required this.targetStringIndex,
     required this.showHintColors,
@@ -7176,6 +7184,8 @@ class _VerticalViolinNeckPainter extends CustomPainter {
 
   final Offset? marker;
   final int? selectedString;
+  final int? selectedFinger;
+  final bool selectedLowSecond;
   final int targetFingerNumber;
   final int targetStringIndex;
   final bool showHintColors;
@@ -7271,9 +7281,15 @@ class _VerticalViolinNeckPainter extends CustomPainter {
     }
 
     if (marker != null) {
-      final onDString = selectedString == 1;
+      // Green when the placement matches the target note, red otherwise —
+      // the same correctness rule the learning screens use (right string,
+      // right finger, and low-2 sub-zone when the target demands it). This
+      // works for every note on every string.
+      final isCorrect = selectedString == targetStringIndex &&
+          selectedFinger == targetFingerNumber &&
+          (!targetLowSecondFinger || selectedLowSecond);
       final markerPaint = Paint()
-        ..color = onDString ? const Color(0xFF00C853) : const Color(0xFFFF7043);
+        ..color = isCorrect ? const Color(0xFF00C853) : const Color(0xFFFF7043);
       canvas.drawCircle(marker!, 11, markerPaint);
       canvas.drawCircle(
         marker!,
@@ -7290,6 +7306,8 @@ class _VerticalViolinNeckPainter extends CustomPainter {
   bool shouldRepaint(covariant _VerticalViolinNeckPainter oldDelegate) {
     return oldDelegate.marker != marker ||
         oldDelegate.selectedString != selectedString ||
+        oldDelegate.selectedFinger != selectedFinger ||
+        oldDelegate.selectedLowSecond != selectedLowSecond ||
         oldDelegate.targetFingerNumber != targetFingerNumber ||
         oldDelegate.targetStringIndex != targetStringIndex ||
         oldDelegate.showHintColors != showHintColors ||

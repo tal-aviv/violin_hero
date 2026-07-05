@@ -309,6 +309,97 @@ const List<SongDefinition> kSongLibrary = [
     ],
   ),
   SongDefinition(
+    id: 'song_of_the_wind',
+    title: 'Song of the Wind',
+    icon: Icons.air_rounded,
+    color: Color(0xFF5DADE2),
+    // Suzuki Book 1 #3, A major, 2/4 time. Pitches recovered via
+    // Audiveris OMR (see tools/test_fixtures/songofthewind.musicxml),
+    // rhythm dictated by hand because Audiveris consistently misread
+    // straight beam-groups as triplets and dropped the quarter-rest
+    // cadence on the half-bars (M4 / M6). Plays through once — the
+    // overarching ‖: ... :‖ that would loop the whole tune back to
+    // the start is dropped, but every internal echo (M5–M6 echoing
+    // M3–M4, M11–M13 echoing M7–M9) is preserved exactly as written.
+    // 14 bars of 2/4 = 28 beats = 49 slots:
+    //   • M1–M4:   12 eighths + Q + QR        (first phrase)
+    //   • M5–M6:   4 eighths  + Q + QR        (= echo of M3 + M4)
+    //   • M7–M10:  14 eighths + Q             (second phrase)
+    //   • M11–M14: 12 eighths + Q + QR        (= echo of M7–M10
+    //                                          cadencing on A4)
+    noteIds: [
+      // ── M1 ── A B C# D, all eighths on the A string
+      'A4_A', 'B4_A', 'C#5_A', 'D5_A',
+      // ── M2 ── E E E E
+      'E5_E', 'E5_E', 'E5_E', 'E5_E',
+      // ── M3 ── F# D A F#
+      'F#5_E', 'D5_A', 'A5_E', 'F#5_E',
+      // ── M4 ── E (quarter) + quarter rest
+      'E5_E', '',
+      // ── M5 ── F# D A F#  (= M3)
+      'F#5_E', 'D5_A', 'A5_E', 'F#5_E',
+      // ── M6 ── E (quarter) + quarter rest  (= M4)
+      'E5_E', '',
+      // ── M7 ── E D D D
+      'E5_E', 'D5_A', 'D5_A', 'D5_A',
+      // ── M8 ── D C# C# C#
+      'D5_A', 'C#5_A', 'C#5_A', 'C#5_A',
+      // ── M9 ── C# B B B
+      'C#5_A', 'B4_A', 'B4_A', 'B4_A',
+      // ── M10 ── A C# (eighths) + E (quarter)
+      'A4_A', 'C#5_A', 'E5_E',
+      // ── M11 ── E D D D  (= M7)
+      'E5_E', 'D5_A', 'D5_A', 'D5_A',
+      // ── M12 ── D C# C# C#  (= M8)
+      'D5_A', 'C#5_A', 'C#5_A', 'C#5_A',
+      // ── M13 ── C# B B B  (= M9)
+      'C#5_A', 'B4_A', 'B4_A', 'B4_A',
+      // ── M14 ── A (quarter) + quarter rest
+      'A4_A', '',
+    ],
+    noteDurations: [
+      // M1: 4 eighths
+      NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.eighth,
+      // M2: 4 eighths
+      NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.eighth,
+      // M3: 4 eighths
+      NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.eighth,
+      // M4: Q + QR
+      NoteDuration.quarter, NoteDuration.quarterRest,
+      // M5: 4 eighths
+      NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.eighth,
+      // M6: Q + QR
+      NoteDuration.quarter, NoteDuration.quarterRest,
+      // M7: 4 eighths
+      NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.eighth,
+      // M8: 4 eighths
+      NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.eighth,
+      // M9: 4 eighths
+      NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.eighth,
+      // M10: 2 eighths + Q
+      NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.quarter,
+      // M11: 4 eighths
+      NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.eighth,
+      // M12: 4 eighths
+      NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.eighth,
+      // M13: 4 eighths
+      NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.eighth,
+      // M14: Q + QR
+      NoteDuration.quarter, NoteDuration.quarterRest,
+    ],
+  ),
+  SongDefinition(
     id: 'ode_to_joy',
     title: 'Ode to Joy',
     icon: Icons.celebration_rounded,
@@ -514,98 +605,6 @@ const List<SongDefinition> kSongLibrary = [
   // To promote a song to the public library: change its `visibility`
   // to `SongVisibility.public` (or just remove the field — public is
   // the default). No other code changes needed.
-  SongDefinition(
-    id: 'song_of_the_wind',
-    title: 'Song of the Wind',
-    icon: Icons.air_rounded,
-    color: Color(0xFF5DADE2),
-    visibility: SongVisibility.admin,
-    // Suzuki Book 1 #3, A major, 2/4 time. Pitches recovered via
-    // Audiveris OMR (see tools/test_fixtures/songofthewind.musicxml),
-    // rhythm dictated by hand because Audiveris consistently misread
-    // straight beam-groups as triplets and dropped the quarter-rest
-    // cadence on the half-bars (M4 / M6). Plays through once — the
-    // overarching ‖: ... :‖ that would loop the whole tune back to
-    // the start is dropped, but every internal echo (M5–M6 echoing
-    // M3–M4, M11–M13 echoing M7–M9) is preserved exactly as written.
-    // 14 bars of 2/4 = 28 beats = 49 slots:
-    //   • M1–M4:   12 eighths + Q + QR        (first phrase)
-    //   • M5–M6:   4 eighths  + Q + QR        (= echo of M3 + M4)
-    //   • M7–M10:  14 eighths + Q             (second phrase)
-    //   • M11–M14: 12 eighths + Q + QR        (= echo of M7–M10
-    //                                          cadencing on A4)
-    noteIds: [
-      // ── M1 ── A B C# D, all eighths on the A string
-      'A4_A', 'B4_A', 'C#5_A', 'D5_A',
-      // ── M2 ── E E E E
-      'E5_E', 'E5_E', 'E5_E', 'E5_E',
-      // ── M3 ── F# D A F#
-      'F#5_E', 'D5_A', 'A5_E', 'F#5_E',
-      // ── M4 ── E (quarter) + quarter rest
-      'E5_E', '',
-      // ── M5 ── F# D A F#  (= M3)
-      'F#5_E', 'D5_A', 'A5_E', 'F#5_E',
-      // ── M6 ── E (quarter) + quarter rest  (= M4)
-      'E5_E', '',
-      // ── M7 ── E D D D
-      'E5_E', 'D5_A', 'D5_A', 'D5_A',
-      // ── M8 ── D C# C# C#
-      'D5_A', 'C#5_A', 'C#5_A', 'C#5_A',
-      // ── M9 ── C# B B B
-      'C#5_A', 'B4_A', 'B4_A', 'B4_A',
-      // ── M10 ── A C# (eighths) + E (quarter)
-      'A4_A', 'C#5_A', 'E5_E',
-      // ── M11 ── E D D D  (= M7)
-      'E5_E', 'D5_A', 'D5_A', 'D5_A',
-      // ── M12 ── D C# C# C#  (= M8)
-      'D5_A', 'C#5_A', 'C#5_A', 'C#5_A',
-      // ── M13 ── C# B B B  (= M9)
-      'C#5_A', 'B4_A', 'B4_A', 'B4_A',
-      // ── M14 ── A (quarter) + quarter rest
-      'A4_A', '',
-    ],
-    noteDurations: [
-      // M1: 4 eighths
-      NoteDuration.eighth, NoteDuration.eighth,
-      NoteDuration.eighth, NoteDuration.eighth,
-      // M2: 4 eighths
-      NoteDuration.eighth, NoteDuration.eighth,
-      NoteDuration.eighth, NoteDuration.eighth,
-      // M3: 4 eighths
-      NoteDuration.eighth, NoteDuration.eighth,
-      NoteDuration.eighth, NoteDuration.eighth,
-      // M4: Q + QR
-      NoteDuration.quarter, NoteDuration.quarterRest,
-      // M5: 4 eighths
-      NoteDuration.eighth, NoteDuration.eighth,
-      NoteDuration.eighth, NoteDuration.eighth,
-      // M6: Q + QR
-      NoteDuration.quarter, NoteDuration.quarterRest,
-      // M7: 4 eighths
-      NoteDuration.eighth, NoteDuration.eighth,
-      NoteDuration.eighth, NoteDuration.eighth,
-      // M8: 4 eighths
-      NoteDuration.eighth, NoteDuration.eighth,
-      NoteDuration.eighth, NoteDuration.eighth,
-      // M9: 4 eighths
-      NoteDuration.eighth, NoteDuration.eighth,
-      NoteDuration.eighth, NoteDuration.eighth,
-      // M10: 2 eighths + Q
-      NoteDuration.eighth, NoteDuration.eighth,
-      NoteDuration.quarter,
-      // M11: 4 eighths
-      NoteDuration.eighth, NoteDuration.eighth,
-      NoteDuration.eighth, NoteDuration.eighth,
-      // M12: 4 eighths
-      NoteDuration.eighth, NoteDuration.eighth,
-      NoteDuration.eighth, NoteDuration.eighth,
-      // M13: 4 eighths
-      NoteDuration.eighth, NoteDuration.eighth,
-      NoteDuration.eighth, NoteDuration.eighth,
-      // M14: Q + QR
-      NoteDuration.quarter, NoteDuration.quarterRest,
-    ],
-  ),
   SongDefinition(
     id: 'go_tell_aunt_rhody',
     title: 'Go Tell Aunt Rhody',

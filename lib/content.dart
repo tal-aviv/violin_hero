@@ -606,6 +606,44 @@ const List<SongDefinition> kSongLibrary = [
   // to `SongVisibility.public` (or just remove the field — public is
   // the default). No other code changes needed.
   SongDefinition(
+    id: 'may_song',
+    title: 'May Song',
+    icon: Icons.local_florist_rounded,
+    color: Color(0xFF4FB38E),
+    visibility: SongVisibility.admin,
+    // Suzuki Book 1 #7, A major. Pitches + rhythm from Audiveris OMR of
+    // the first movement (tools/test_fixtures/maysong.musicxml.mvt1.mxl).
+    // The second movement OMR (mvt2) came back garbled — Audiveris read
+    // it an octave-plus low into bass-clef pitches (C3/E3/F3) and dropped
+    // most notes — so only the mvt1 material is captured here. Kept
+    // admin-only until the rhythm is verified by ear and the rest of the
+    // tune is dictated in.
+    noteIds: [
+      'A4_A', 'C#5_A', 'E5_E', 'A5_E', 'F#5_E', 'A5_E', 'F#5_E', 'E5_E',
+      'D5_A', 'E5_E', 'C#5_A', 'A4_A', 'B4_A', 'A4_A', 'E5_E', 'E5_E',
+      'D5_A', 'D5_A', 'C#5_A', 'E5_E', 'C#5_A', 'B4_A', 'E5_E', 'E5_E',
+      'D5_A', 'D5_A', 'C#5_A', 'E5_E', 'C#5_A', 'B4_A',
+      // Last line (M9–M12) = exact repeat of measures 1–4
+      'A4_A', 'C#5_A', 'E5_E', 'A5_E', 'F#5_E', 'A5_E', 'F#5_E', 'E5_E',
+      'D5_A', 'E5_E', 'C#5_A', 'A4_A', 'B4_A', 'A4_A',
+    ],
+    noteDurations: [
+      NoteDuration.dottedQuarter, NoteDuration.eighth, NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.quarter, NoteDuration.eighth, NoteDuration.eighth, NoteDuration.half,
+      NoteDuration.dottedQuarter, NoteDuration.eighth, NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.half, NoteDuration.half, NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.quarter, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.half, NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.quarter, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.half,
+      // M9–M12 = repeat of M1–M4
+      NoteDuration.dottedQuarter, NoteDuration.eighth, NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.quarter, NoteDuration.eighth, NoteDuration.eighth, NoteDuration.half,
+      NoteDuration.dottedQuarter, NoteDuration.eighth, NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.half, NoteDuration.half,
+    ],
+  ),
+  SongDefinition(
     id: 'go_tell_aunt_rhody',
     title: 'Go Tell Aunt Rhody',
     // "Go tell…" — a speaking/telling icon (person with voice waves).

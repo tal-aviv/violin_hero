@@ -1016,6 +1016,80 @@ const List<SongDefinition> kSongLibrary = [
       NoteDuration.half,
     ],
   ),
+  SongDefinition(
+    id: 'song_of_the_wind_harmony',
+    title: 'Song of the Wind Harmony',
+    icon: Icons.wind_power_rounded,
+    color: Color(0xFF3A7BD5),
+    visibility: SongVisibility.admin,
+    // Second-violin harmony to Song of the Wind, A major, 2/4, same
+    // 14-bar shape as the melody (M5–M6 echo M3–M4, M11–M13 echo M7–M9).
+    // Audiveris (tools/test_fixtures/songofthewindharmony.musicxml.mxl)
+    // only captured M1–M3 reliably — it dropped M4, misread the key as C
+    // major in M3 (F5 → F#5) and garbled the second half — so M4–M14 were
+    // dictated by hand.
+    noteIds: [
+      // M1: A E A B
+      'A4_A', 'E4_D', 'A4_A', 'B4_A',
+      // M2: C# (quarter) C# C#
+      'C#5_A', 'C#5_A', 'C#5_A',
+      // M3: D (quarter) F# D
+      'D5_A', 'F#5_E', 'D5_A',
+      // M4: C# (quarter) + quarter rest
+      'C#5_A', '',
+      // M5: = M3
+      'D5_A', 'F#5_E', 'D5_A',
+      // M6: = M4
+      'C#5_A', '',
+      // M7: C# B B B
+      'C#5_A', 'B4_A', 'B4_A', 'B4_A',
+      // M8: B A A A
+      'B4_A', 'A4_A', 'A4_A', 'A4_A',
+      // M9: G# G# A B  (G# = high 3rd finger on the D string)
+      'G#4_D', 'G#4_D', 'A4_A', 'B4_A',
+      // M10: A (quarter) C# + eighth rest
+      'A4_A', 'C#5_A', '',
+      // M11–M13: = M7–M9
+      'C#5_A', 'B4_A', 'B4_A', 'B4_A',
+      'B4_A', 'A4_A', 'A4_A', 'A4_A',
+      'G#4_D', 'G#4_D', 'A4_A', 'B4_A',
+      // M14: A (quarter) + quarter rest
+      'A4_A', '',
+    ],
+    noteDurations: [
+      // M1: 4 eighths
+      NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.eighth,
+      // M2: q e e
+      NoteDuration.quarter, NoteDuration.eighth, NoteDuration.eighth,
+      // M3: q e e
+      NoteDuration.quarter, NoteDuration.eighth, NoteDuration.eighth,
+      // M4: q + qRest
+      NoteDuration.quarter, NoteDuration.quarterRest,
+      // M5: q e e
+      NoteDuration.quarter, NoteDuration.eighth, NoteDuration.eighth,
+      // M6: q + qRest
+      NoteDuration.quarter, NoteDuration.quarterRest,
+      // M7–M9: 4 eighths each
+      NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.eighth,
+      // M10: q e + eRest
+      NoteDuration.quarter, NoteDuration.eighth, NoteDuration.eighthRest,
+      // M11–M13: 4 eighths each
+      NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.eighth,
+      NoteDuration.eighth, NoteDuration.eighth,
+      // M14: q + qRest
+      NoteDuration.quarter, NoteDuration.quarterRest,
+    ],
+  ),
 ];
 
 /// Song IDs in each [SkillLevel]'s Practice Songs section, in display
@@ -1132,8 +1206,8 @@ class GameNote {
 /// sync). Order matters: the free-play fallback returns the first entry,
 /// so the D string stays first.
 ///
-///  * Learn Notes (free play) uses every note **except** `C5_A` — the
-///    low-2 C natural only appears in song material.
+///  * Learn Notes (free play) uses every note **except** `C5_A` and
+///    `G#4_D`, which only appear in song material.
 ///  * Learn Songs uses every note **except** the G-string notes, which no
 ///    current song reaches.
 ///
@@ -1180,6 +1254,18 @@ const List<GameNote> kGameNotePool = [
     stringIndex: 1,
     frequencyHz: 392.00,
     hintColor: Color(0xFF50D6A5),
+  ),
+  // G# on the D string (high 3rd finger), used by A-major harmony parts.
+  // Shares G4's staff line and finger zone; the sharp sign tells them apart.
+  GameNote(
+    id: 'G#4_D',
+    letterLabel: 'G#',
+    solfegeLabel: 'Sol#',
+    staffStep: 2,
+    fingerNumber: 3,
+    stringIndex: 1,
+    frequencyHz: 415.30,
+    hintColor: Color(0xFFAB47BC),
   ),
   // A / La string (A string index: 2)
   GameNote(

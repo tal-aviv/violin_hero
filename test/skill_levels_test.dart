@@ -82,6 +82,30 @@ void main() {
     expect(hasSongModules(_session('admin', SkillLevel.beginner)), isTrue);
   });
 
+  test('every song is well-formed', () {
+    final noteIds = kGameNotePool.map((note) => note.id).toSet();
+    for (final song in kSongLibrary) {
+      expect(song.noteIds.length, song.noteDurations.length, reason: song.id);
+      for (var i = 0; i < song.noteIds.length; i++) {
+        final isRest = song.noteDurations[i].spec.isRest;
+        expect(
+          isRest ? song.noteIds[i].isEmpty : noteIds.contains(song.noteIds[i]),
+          isTrue,
+          reason: '${song.id} slot $i',
+        );
+      }
+    }
+  });
+
+  test('Song of the Wind Harmony is 14 bars of 2/4', () {
+    final song =
+        kSongLibrary.firstWhere((s) => s.id == 'song_of_the_wind_harmony');
+    final beats = song.noteDurations
+        .fold<double>(0, (sum, d) => sum + d.spec.beatUnits);
+    expect(beats, 28);
+    expect(song.visibility, SongVisibility.admin);
+  });
+
   group('newSongsForSession', () {
     List<String> newIdsFor(UserSession session) =>
         newSongsForSession(session).map((song) => song.id).toList();

@@ -1899,11 +1899,13 @@ class _ViolinGameScreenState extends State<ViolinGameScreen>
 
   final Random _random = Random();
 
-  // Free play exposes every note in [kGameNotePool] except the low-2
-  // `C5_A` (C natural only appears in song material). Derived from the
-  // shared pool so the note set can't drift from Learn Songs.
+  // Free play exposes every note in [kGameNotePool] except the song-only
+  // `C5_A` and `G#4_D`, which share a finger zone with C#5 / G4 and would
+  // be ambiguous here. Derived from the shared pool so the note set can't
+  // drift from Learn Songs.
+  static const Set<String> _songOnlyNoteIds = {'C5_A', 'G#4_D'};
   static final List<GameNote> _allNotes = kGameNotePool
-      .where((note) => note.id != 'C5_A')
+      .where((note) => !_songOnlyNoteIds.contains(note.id))
       .toList(growable: false);
 
   // Adaptive per-note state maps (_consecutiveCorrect, _mastered, hide

@@ -22,9 +22,9 @@ redeploying.
 |---|---|
 | beginner | *(none)* |
 | intermediate | `twinkle_la`, `twinkle_harmony_vln2`, `frere_jacques`, `lightly_row` |
-| advanced | intermediate songs + `go_tell_aunt_rhody`, `o_come_little_children`, `ode_to_joy`, `mississippi_reel` |
+| advanced | intermediate songs + `song_of_the_wind`, `go_tell_aunt_rhody`, `o_come_little_children`, `ode_to_joy`, `mississippi_reel` |
 
-`song_of_the_wind` is in no list, so only admin accounts see it.
+Songs are shown in the order they appear in the level's list.
 
 ### Initial user assignments
 
@@ -50,7 +50,8 @@ A user's effective level is resolved in this order:
 ## Song list
 
 - Non-admin users see only songs whose ID is in `kLevelSongs[effectiveLevel]`
-  **and** whose `visibility` is `public`. Everything else is hidden.
+  **and** whose `visibility` is `public`, in list order. Everything else is
+  hidden.
 - Admin accounts (`isAdminUser`) see every song, including drafts, as today.
 - A beginner (empty list) sees an empty song screen with a short friendly
   message instead of a blank page.

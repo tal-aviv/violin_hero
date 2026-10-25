@@ -33,6 +33,25 @@ Songs are shown in the order they appear in the level's list.
 | `tal` | advanced |
 | `gelila q` | advanced |
 | `gelilaq` | advanced |
+| `דלינה` | intermediate |
+| `dbora` | intermediate |
+| `pricilla` | intermediate |
+| `אלנה` | intermediate |
+| `raman` | intermediate |
+| `אביגיל` | intermediate |
+| `merbl` | intermediate |
+| `567` | intermediate |
+| `מגדה` | intermediate |
+| `abigail` | intermediate |
+| `raman_thecoolest` | intermediate |
+| `elane` | intermediate |
+| `cristal` | intermediate |
+| `מירבל` | intermediate |
+| `prisilla` | intermediate |
+| `hili` | intermediate |
+| `pricilla6767` | intermediate |
+| `prisilla 6767` | intermediate |
+| `tal2` | intermediate |
 
 Keys are matched against the trimmed, lowercased username, so `gelila q`
 keeps its inner space. Every other existing account resolves to beginner.

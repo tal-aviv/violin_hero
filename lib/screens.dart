@@ -615,7 +615,7 @@ class ModuleSelectionScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _ModuleCard(
-              title: 'Learn Notes',
+              title: 'Practice Notes',
               icon: Icons.music_note_rounded,
               color: const Color(0xFF6E7BFF),
               onTap: () {
@@ -630,23 +630,47 @@ class ModuleSelectionScreen extends StatelessWidget {
                 );
               },
             ),
-            const SizedBox(height: 10),
-            _ModuleCard(
-              title: 'Learn Songs',
-              icon: Icons.piano_rounded,
-              color: const Color(0xFF4FB38E),
-              onTap: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => SongSelectionScreen(
-                      session: session,
-                      onLogout: onLogout,
-                      onProfileUpdated: onProfileUpdated,
+            if (hasSongModules(session)) ...[
+              const SizedBox(height: 10),
+              _ModuleCard(
+                title: 'Practice Songs',
+                icon: Icons.piano_rounded,
+                color: const Color(0xFF4FB38E),
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => SongSelectionScreen(
+                        songs: practiceSongsForSession(session),
+                        emptyMessage:
+                            'Songs are coming soon!\nKeep practicing in Practice Notes.',
+                        session: session,
+                        onLogout: onLogout,
+                        onProfileUpdated: onProfileUpdated,
+                      ),
                     ),
-                  ),
-                );
-              },
-            ),
+                  );
+                },
+              ),
+              const SizedBox(height: 10),
+              _ModuleCard(
+                title: 'New Songs',
+                icon: Icons.auto_awesome_rounded,
+                color: const Color(0xFFFF8A65),
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => SongSelectionScreen(
+                        songs: newSongsForSession(session),
+                        emptyMessage: 'No new songs right now.\nCheck back soon!',
+                        session: session,
+                        onLogout: onLogout,
+                        onProfileUpdated: onProfileUpdated,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
           ],
         ),
       ),
@@ -1709,17 +1733,20 @@ class SongSelectionScreen extends StatelessWidget {
     required this.session,
     required this.onLogout,
     required this.onProfileUpdated,
+    required this.songs,
+    required this.emptyMessage,
   });
 
   final UserSession session;
   final Future<void> Function() onLogout;
   final ValueChanged<UserSession> onProfileUpdated;
+  final List<SongDefinition> songs;
+
+  /// Shown instead of the list when [songs] is empty.
+  final String emptyMessage;
 
   @override
   Widget build(BuildContext context) {
-    // Admin accounts see every song (drafts get a DRAFT badge); everyone
-    // else sees only the songs unlocked for their level.
-    final visibleSongs = songsForSession(session);
 
     return Scaffold(
       appBar: AppBar(
@@ -1740,35 +1767,35 @@ class SongSelectionScreen extends StatelessWidget {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (visibleSongs.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 48),
+                if (songs.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 48),
                     child: Text(
-                      'New songs are coming soon!\nKeep practicing in Learn Notes.',
+                      emptyMessage,
                       textAlign: TextAlign.center,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 18,
                         color: Color(0xFF5C6485),
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                   ),
-                for (int i = 0; i < visibleSongs.length; i++) ...[
+                for (int i = 0; i < songs.length; i++) ...[
                   if (i > 0) const SizedBox(height: 10),
                   _ModuleCard(
-                    title: visibleSongs[i].title,
-                    icon: visibleSongs[i].icon,
-                    color: visibleSongs[i].color,
+                    title: songs[i].title,
+                    icon: songs[i].icon,
+                    color: songs[i].color,
                     isDraft:
-                        visibleSongs[i].visibility == SongVisibility.admin,
+                        songs[i].visibility == SongVisibility.admin,
                     footer: _ProgressStarsRow(
                       filledCount: _displayStarsFromSectionTotal(
-                        progress.songSectionStars[visibleSongs[i].id] ?? 0,
+                        progress.songSectionStars[songs[i].id] ?? 0,
                       ),
-                      color: visibleSongs[i].color,
+                      color: songs[i].color,
                     ),
                     onTap: () {
-                      final song = visibleSongs[i];
+                      final song = songs[i];
                       Navigator.of(context).push(
                         MaterialPageRoute<void>(
                           builder: (_) => SongLearningScreen(
@@ -2238,7 +2265,7 @@ class _ViolinGameScreenState extends State<ViolinGameScreen>
       appBar: AppBar(
         toolbarHeight: 120,
         leading: const BackButton(),
-        title: const Text('Learn Notes'),
+        title: const Text('Practice Notes'),
         actions: [
           ProfileCornerAction(
             session: widget.session,

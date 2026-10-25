@@ -823,7 +823,7 @@ const List<SongDefinition> kSongLibrary = [
     // Brisk and energetic — a lightning bolt for the lively tempo.
     icon: Icons.bolt_rounded,
     color: Color(0xFFFFA726),
-    visibility: SongVisibility.admin,
+    visibility: SongVisibility.public,
     // Suzuki Book 1 (Suzuki), A major, 4/4. Transcribed via Audiveris OMR
     // (tools/test_fixtures/allegro.musicxml.mvt1.mxl). The scan read cleanly
     // except M7, where straight quarter notes were mis-tagged as a triplet
@@ -1018,11 +1018,11 @@ const List<SongDefinition> kSongLibrary = [
   ),
 ];
 
-/// Song IDs unlocked for each [SkillLevel], in display order. To unlock a
-/// song for a level, add its ID to that level's list. Lists are
-/// independent: a song meant for several levels is listed in each.
-/// Only `public` songs are shown, so a draft listed here stays hidden
-/// until it's promoted.
+/// Song IDs in each [SkillLevel]'s Practice Songs section, in display
+/// order. To unlock a song for a level, add its ID to that level's list.
+/// Lists are independent: a song meant for several levels is listed in
+/// each. Only `public` songs are shown, so a draft listed here stays
+/// hidden until it's promoted.
 const Map<SkillLevel, List<String>> kLevelSongs = {
   SkillLevel.beginner: [],
   SkillLevel.intermediate: [
@@ -1044,18 +1044,51 @@ const Map<SkillLevel, List<String>> kLevelSongs = {
   ],
 };
 
-/// Songs shown on the song-selection screen. Admins see the whole library
-/// (drafts included); everyone else sees their level's public songs.
-List<SongDefinition> songsForSession(UserSession session) {
+/// Song IDs in each [SkillLevel]'s New Songs section, same rules as
+/// [kLevelSongs]. When a song graduates, move its ID to [kLevelSongs].
+const Map<SkillLevel, List<String>> kLevelNewSongs = {
+  SkillLevel.beginner: [],
+  SkillLevel.intermediate: ['song_of_the_wind'],
+  SkillLevel.advanced: ['allegro'],
+};
+
+/// The admin account's New Songs section. Drafts may be listed here.
+const List<String> kAdminNewSongs = [];
+
+/// Levels whose home screen shows the Practice Songs and New Songs
+/// modules. Other levels only get Practice Notes. Admins always see both.
+const Set<SkillLevel> kLevelsWithSongModules = {
+  SkillLevel.intermediate,
+  SkillLevel.advanced,
+};
+
+bool hasSongModules(UserSession session) =>
+    isAdminUser(session) || kLevelsWithSongModules.contains(session.level);
+
+/// Practice Songs section. Admins see the whole library (drafts
+/// included); everyone else sees their level's public songs.
+List<SongDefinition> practiceSongsForSession(UserSession session) {
   if (isAdminUser(session)) return kSongLibrary;
+  return _publicSongsById(kLevelSongs[session.level] ?? const []);
+}
+
+/// New Songs section. Admins get [kAdminNewSongs] instead of a level list.
+List<SongDefinition> newSongsForSession(UserSession session) {
+  if (isAdminUser(session)) {
+    return [
+      for (final id in kAdminNewSongs)
+        ...kSongLibrary.where((song) => song.id == id),
+    ];
+  }
+  return _publicSongsById(kLevelNewSongs[session.level] ?? const []);
+}
+
+List<SongDefinition> _publicSongsById(List<String> ids) {
   final publicById = {
     for (final song in kSongLibrary)
       if (song.visibility == SongVisibility.public) song.id: song,
   };
-  return [
-    for (final id in kLevelSongs[session.level] ?? const <String>[])
-      ?publicById[id],
-  ];
+  return [for (final id in ids) ?publicById[id]];
 }
 
 class GameNote {

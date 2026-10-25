@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:violin_hero/main.dart';
 
 List<String> _songIdsFor(UserSession session) =>
-    songsForSession(session).map((song) => song.id).toList();
+    practiceSongsForSession(session).map((song) => song.id).toList();
 
 UserSession _session(String username, SkillLevel level) =>
     UserSession(username: username, avatarId: 'avatar_frog', level: level);
@@ -28,7 +28,7 @@ void main() {
     });
   });
 
-  group('songsForSession', () {
+  group('practiceSongsForSession', () {
     test('beginner has no songs', () {
       expect(_songIdsFor(_session('kid', SkillLevel.beginner)), isEmpty);
     });
@@ -65,9 +65,48 @@ void main() {
 
     test('every listed song ID exists in the library', () {
       final libraryIds = kSongLibrary.map((song) => song.id).toSet();
-      for (final ids in kLevelSongs.values) {
+      for (final ids in [
+        ...kLevelSongs.values,
+        ...kLevelNewSongs.values,
+        kAdminNewSongs,
+      ]) {
         expect(libraryIds, containsAll(ids));
       }
+    });
+  });
+
+  test('beginners only get Practice Notes; other levels and admin get song modules', () {
+    expect(hasSongModules(_session('kid', SkillLevel.beginner)), isFalse);
+    expect(hasSongModules(_session('kid', SkillLevel.intermediate)), isTrue);
+    expect(hasSongModules(_session('kid', SkillLevel.advanced)), isTrue);
+    expect(hasSongModules(_session('admin', SkillLevel.beginner)), isTrue);
+  });
+
+  group('newSongsForSession', () {
+    List<String> newIdsFor(UserSession session) =>
+        newSongsForSession(session).map((song) => song.id).toList();
+
+    test('each level gets its own new songs', () {
+      expect(newIdsFor(_session('kid', SkillLevel.beginner)), isEmpty);
+      expect(
+        newIdsFor(_session('kid', SkillLevel.intermediate)),
+        ['song_of_the_wind'],
+      );
+      expect(newIdsFor(_session('kid', SkillLevel.advanced)), ['allegro']);
+    });
+
+    test('new songs stay out of the same level\'s practice songs', () {
+      for (final level in SkillLevel.values) {
+        final session = _session('kid', level);
+        expect(
+          _songIdsFor(session).toSet().intersection(newIdsFor(session).toSet()),
+          isEmpty,
+        );
+      }
+    });
+
+    test('admin has no new songs', () {
+      expect(newIdsFor(_session('admin', SkillLevel.advanced)), isEmpty);
     });
   });
 }

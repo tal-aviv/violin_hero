@@ -154,6 +154,7 @@ class _FingerPlacement {
     required this.fingerNumber,
     required this.stringIndex,
     this.lowSecondVariant = false,
+    this.highThirdVariant = false,
   });
 
   final int fingerNumber;
@@ -164,6 +165,33 @@ class _FingerPlacement {
   /// finger 1). Used by the correctness check for low-2 notes such as
   /// C natural.
   final bool lowSecondVariant;
+
+  /// `true` only when [fingerNumber] is 3 and the player tapped past the
+  /// regular 3rd-finger line (the high-3 spot). Used by the correctness
+  /// check for high-3 notes such as G# on the D string.
+  final bool highThirdVariant;
+
+  /// Same rule everywhere: right string, right finger, and the low-2 /
+  /// high-3 sub-zone when the target demands it. Regular 2nd / 3rd
+  /// finger targets accept either sub-zone.
+  bool matches({
+    required int stringIndex,
+    required int fingerNumber,
+    required bool lowSecondFinger,
+    required bool highThirdFinger,
+  }) {
+    return this.stringIndex == stringIndex &&
+        this.fingerNumber == fingerNumber &&
+        (!lowSecondFinger || lowSecondVariant) &&
+        (!highThirdFinger || highThirdVariant);
+  }
+
+  bool matchesNote(GameNote note) => matches(
+        stringIndex: note.stringIndex,
+        fingerNumber: note.fingerNumber,
+        lowSecondFinger: note.lowSecondFinger,
+        highThirdFinger: note.highThirdFinger,
+      );
 }
 
 class _ResolvedPlacement {
@@ -232,6 +260,36 @@ class _ViolinFingerGeometry {
     return y.clamp(top, bottom).toDouble();
   }
 
+  /// How far past the 3rd-finger line the high-3 spot sits, as a fraction
+  /// of the distance the low-2 spot sits past the 1st-finger line.
+  static const double highThirdOffsetScale = 0.5;
+
+  /// Y-coordinate of the "high 3" finger spot (e.g. G# on the D string),
+  /// a little past the regular 3rd-finger line.
+  static double yForHighThirdFingerOnScreen(Size size) {
+    final bottom = size.height - bottomPadding;
+    final offset = (yForLowSecondFingerOnScreen(size) -
+            yForFingerOnScreen(fingerNumber: 1, size: size)) *
+        highThirdOffsetScale;
+    final y = yForFingerOnScreen(fingerNumber: 3, size: size) + offset;
+    return y.clamp(topPadding, bottom).toDouble();
+  }
+
+  static double yForTarget({
+    required int fingerNumber,
+    required bool lowSecondFinger,
+    required bool highThirdFinger,
+    required Size size,
+  }) {
+    if (fingerNumber == 2 && lowSecondFinger) {
+      return yForLowSecondFingerOnScreen(size);
+    }
+    if (fingerNumber == 3 && highThirdFinger) {
+      return yForHighThirdFingerOnScreen(size);
+    }
+    return yForFingerOnScreen(fingerNumber: fingerNumber, size: size);
+  }
+
   static _ResolvedPlacement resolveFromTouch(Offset local, Size size) {
     final strings = stringXs(size);
     int stringIndex = 0;
@@ -251,10 +309,12 @@ class _ViolinFingerGeometry {
     final y2Low = yForLowSecondFingerOnScreen(size);
     final y2 = yForFingerOnScreen(fingerNumber: 2, size: size);
     final y3 = yForFingerOnScreen(fingerNumber: 3, size: size);
+    final y3High = yForHighThirdFingerOnScreen(size);
     final yOpen = yForFingerOnScreen(fingerNumber: 0, size: size);
 
     final int fingerNumber;
     bool lowSecondVariant = false;
+    bool highThirdVariant = false;
     if (clampedY < (y1 + y2) / 2) {
       fingerNumber = 1;
     } else if (clampedY < (y2 + y3) / 2) {
@@ -266,18 +326,25 @@ class _ViolinFingerGeometry {
       lowSecondVariant = clampedY < (y2Low + y2) / 2;
     } else if (clampedY < (y3 + yOpen) / 2) {
       fingerNumber = 3;
+      // Mirror of the low-2 split: past the midpoint between the regular
+      // 3rd-finger line and the high-3 spot counts as high 3.
+      highThirdVariant = clampedY > (y3 + y3High) / 2;
     } else {
       fingerNumber = 0;
     }
-    final snappedY = (fingerNumber == 2 && lowSecondVariant)
-        ? y2Low
-        : yForFingerOnScreen(fingerNumber: fingerNumber, size: size);
+    final snappedY = yForTarget(
+      fingerNumber: fingerNumber,
+      lowSecondFinger: lowSecondVariant,
+      highThirdFinger: highThirdVariant,
+      size: size,
+    );
 
     return _ResolvedPlacement(
       placement: _FingerPlacement(
         fingerNumber: fingerNumber,
         stringIndex: stringIndex,
         lowSecondVariant: lowSecondVariant,
+        highThirdVariant: highThirdVariant,
       ),
       marker: Offset(strings[stringIndex], snappedY),
     );
@@ -295,6 +362,7 @@ class _VerticalViolinNeckCard extends StatefulWidget {
     required this.hintColor,
     required this.onPlacement,
     this.targetLowSecondFinger = false,
+    this.targetHighThirdFinger = false,
   });
 
   final double neckHeight;
@@ -305,6 +373,7 @@ class _VerticalViolinNeckCard extends StatefulWidget {
   final Color hintColor;
   final ValueChanged<_FingerPlacement> onPlacement;
   final bool targetLowSecondFinger;
+  final bool targetHighThirdFinger;
 
   @override
   State<_VerticalViolinNeckCard> createState() => _VerticalViolinNeckCardState();
@@ -312,17 +381,13 @@ class _VerticalViolinNeckCard extends StatefulWidget {
 
 class _VerticalViolinNeckCardState extends State<_VerticalViolinNeckCard> {
   Offset? _marker;
-  int? _selectedString;
-  int? _selectedFinger;
-  bool _selectedLowSecond = false;
+  _FingerPlacement? _selected;
 
   void _handleTap(Offset localPosition, Size size) {
     final resolved = _ViolinFingerGeometry.resolveFromTouch(localPosition, size);
     setState(() {
       _marker = resolved.marker;
-      _selectedString = resolved.placement.stringIndex;
-      _selectedFinger = resolved.placement.fingerNumber;
-      _selectedLowSecond = resolved.placement.lowSecondVariant;
+      _selected = resolved.placement;
     });
     widget.onPlacement(resolved.placement);
   }
@@ -356,14 +421,13 @@ class _VerticalViolinNeckCardState extends State<_VerticalViolinNeckCard> {
                 child: CustomPaint(
                   painter: _VerticalViolinNeckPainter(
                     marker: _marker,
-                    selectedString: _selectedString,
-                    selectedFinger: _selectedFinger,
-                    selectedLowSecond: _selectedLowSecond,
+                    selected: _selected,
                     targetFingerNumber: widget.targetFingerNumber,
                     targetStringIndex: widget.targetStringIndex,
                     showHintColors: widget.showHintColors,
                     hintColor: widget.hintColor,
                     targetLowSecondFinger: widget.targetLowSecondFinger,
+                    targetHighThirdFinger: widget.targetHighThirdFinger,
                   ),
                   child: const SizedBox.expand(),
                 ),
@@ -807,25 +871,23 @@ class _StaffPainter extends CustomPainter {
 class _VerticalViolinNeckPainter extends CustomPainter {
   _VerticalViolinNeckPainter({
     required this.marker,
-    required this.selectedString,
-    required this.selectedFinger,
-    required this.selectedLowSecond,
+    required this.selected,
     required this.targetFingerNumber,
     required this.targetStringIndex,
     required this.showHintColors,
     required this.hintColor,
     this.targetLowSecondFinger = false,
+    this.targetHighThirdFinger = false,
   });
 
   final Offset? marker;
-  final int? selectedString;
-  final int? selectedFinger;
-  final bool selectedLowSecond;
+  final _FingerPlacement? selected;
   final int targetFingerNumber;
   final int targetStringIndex;
   final bool showHintColors;
   final Color hintColor;
   final bool targetLowSecondFinger;
+  final bool targetHighThirdFinger;
   // Approximate relative violin string gauges: G > D > A > E.
   static const List<double> _stringStrokeByIndex = [3.6, 2.7, 2.1, 1.4];
 
@@ -893,12 +955,12 @@ class _VerticalViolinNeckPainter extends CustomPainter {
     }
 
     if (showHintColors) {
-      final targetY = (targetFingerNumber == 2 && targetLowSecondFinger)
-          ? _ViolinFingerGeometry.yForLowSecondFingerOnScreen(size)
-          : _ViolinFingerGeometry.yForFingerOnScreen(
-              fingerNumber: targetFingerNumber,
-              size: size,
-            );
+      final targetY = _ViolinFingerGeometry.yForTarget(
+        fingerNumber: targetFingerNumber,
+        lowSecondFinger: targetLowSecondFinger,
+        highThirdFinger: targetHighThirdFinger,
+        size: size,
+      );
       final targetStringX = strings[targetStringIndex];
       canvas.drawCircle(
         Offset(targetStringX, targetY),
@@ -918,11 +980,15 @@ class _VerticalViolinNeckPainter extends CustomPainter {
     if (marker != null) {
       // Green when the placement matches the target note, red otherwise —
       // the same correctness rule the learning screens use (right string,
-      // right finger, and low-2 sub-zone when the target demands it). This
-      // works for every note on every string.
-      final isCorrect = selectedString == targetStringIndex &&
-          selectedFinger == targetFingerNumber &&
-          (!targetLowSecondFinger || selectedLowSecond);
+      // right finger, and low-2 / high-3 sub-zone when the target demands
+      // it). This works for every note on every string.
+      final isCorrect = selected?.matches(
+            stringIndex: targetStringIndex,
+            fingerNumber: targetFingerNumber,
+            lowSecondFinger: targetLowSecondFinger,
+            highThirdFinger: targetHighThirdFinger,
+          ) ??
+          false;
       final markerPaint = Paint()
         ..color = isCorrect ? const Color(0xFF00C853) : const Color(0xFFFF7043);
       canvas.drawCircle(marker!, 11, markerPaint);
@@ -940,13 +1006,12 @@ class _VerticalViolinNeckPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _VerticalViolinNeckPainter oldDelegate) {
     return oldDelegate.marker != marker ||
-        oldDelegate.selectedString != selectedString ||
-        oldDelegate.selectedFinger != selectedFinger ||
-        oldDelegate.selectedLowSecond != selectedLowSecond ||
+        oldDelegate.selected != selected ||
         oldDelegate.targetFingerNumber != targetFingerNumber ||
         oldDelegate.targetStringIndex != targetStringIndex ||
         oldDelegate.showHintColors != showHintColors ||
         oldDelegate.hintColor != hintColor ||
-        oldDelegate.targetLowSecondFinger != targetLowSecondFinger;
+        oldDelegate.targetLowSecondFinger != targetLowSecondFinger ||
+        oldDelegate.targetHighThirdFinger != targetHighThirdFinger;
   }
 }

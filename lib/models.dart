@@ -307,6 +307,7 @@ class SongDefinition {
     required this.noteIds,
     required this.noteDurations,
     this.icon = Icons.music_note_rounded,
+    this.iconInCircle = false,
     this.color = const Color(0xFF4FB38E),
     this.visibility = SongVisibility.public,
   });
@@ -330,6 +331,11 @@ class SongDefinition {
   /// visual identity without the selection screen needing per-song
   /// hardcoding.
   final IconData icon;
+
+  /// Draws [icon] in white inside a filled circle of [color] — the look
+  /// harmony parts use to pair with their melody (like `stars_rounded`
+  /// next to `star_rounded`) when Material has no circled variant.
+  final bool iconInCircle;
 
   /// Accent color for the song-selection card and the progress stars.
   final Color color;

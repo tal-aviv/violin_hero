@@ -97,6 +97,17 @@ void main() {
     }
   });
 
+  test('G# on the D string is a high-3 G# (415.30 Hz)', () {
+    final gSharp = kGameNotePool.firstWhere((note) => note.id == 'G#4_D');
+    expect(gSharp.frequencyHz, 415.30);
+    expect(gSharp.fingerNumber, 3);
+    expect(gSharp.highThirdFinger, isTrue);
+    expect(
+      kGameNotePool.firstWhere((note) => note.id == 'G4_D').highThirdFinger,
+      isFalse,
+    );
+  });
+
   test('Song of the Wind Harmony is 14 bars of 2/4', () {
     final song =
         kSongLibrary.firstWhere((s) => s.id == 'song_of_the_wind_harmony');

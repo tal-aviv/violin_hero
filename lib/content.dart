@@ -1019,15 +1019,15 @@ const List<SongDefinition> kSongLibrary = [
   SongDefinition(
     id: 'song_of_the_wind_harmony',
     title: 'Song of the Wind Harmony',
-    icon: Icons.wind_power_rounded,
+    icon: Icons.air_rounded,
+    iconInCircle: true,
     color: Color(0xFF3A7BD5),
     visibility: SongVisibility.admin,
     // Second-violin harmony to Song of the Wind, A major, 2/4, same
     // 14-bar shape as the melody (M5–M6 echo M3–M4, M11–M13 echo M7–M9).
     // Audiveris (tools/test_fixtures/songofthewindharmony.musicxml.mxl)
-    // only captured M1–M3 reliably — it dropped M4, misread the key as C
-    // major in M3 (F5 → F#5) and garbled the second half — so M4–M14 were
-    // dictated by hand.
+    // dropped M4–M6, misread the key as C major in M3 (F5 → F#5) and lost
+    // most of the second half, so M4–M14 were dictated by hand.
     noteIds: [
       // M1: A E A B
       'A4_A', 'E4_D', 'A4_A', 'B4_A',
@@ -1045,14 +1045,14 @@ const List<SongDefinition> kSongLibrary = [
       'C#5_A', 'B4_A', 'B4_A', 'B4_A',
       // M8: B A A A
       'B4_A', 'A4_A', 'A4_A', 'A4_A',
-      // M9: G# G# A B  (G# = high 3rd finger on the D string)
-      'G#4_D', 'G#4_D', 'A4_A', 'B4_A',
+      // M9: E F# G# — all on the D string (G# = high 3rd finger)
+      'E4_D', 'E4_D', 'F#4_D', 'G#4_D',
       // M10: A (quarter) C# + eighth rest
       'A4_A', 'C#5_A', '',
       // M11–M13: = M7–M9
       'C#5_A', 'B4_A', 'B4_A', 'B4_A',
       'B4_A', 'A4_A', 'A4_A', 'A4_A',
-      'G#4_D', 'G#4_D', 'A4_A', 'B4_A',
+      'E4_D', 'E4_D', 'F#4_D', 'G#4_D',
       // M14: A (quarter) + quarter rest
       'A4_A', '',
     ],
@@ -1176,6 +1176,7 @@ class GameNote {
     required this.frequencyHz,
     required this.hintColor,
     this.lowSecondFinger = false,
+    this.highThirdFinger = false,
   });
 
   final String id;
@@ -1198,6 +1199,13 @@ class GameNote {
   /// continue to accept either sub-zone, so existing D-major songs are
   /// unaffected.
   final bool lowSecondFinger;
+
+  /// `true` for notes that need the 3rd finger placed a half step higher
+  /// than its regular spot — e.g. G# on the D string. The touch UI puts
+  /// this spot a little past the 3rd-finger line (see
+  /// `_ViolinFingerGeometry.highThirdOffsetScale`). Only high-3 targets are strict;
+  /// regular 3rd-finger notes accept either spot.
+  final bool highThirdFinger;
 }
 
 /// The single source of truth for every playable note in the app. Both
@@ -1256,7 +1264,8 @@ const List<GameNote> kGameNotePool = [
     hintColor: Color(0xFF50D6A5),
   ),
   // G# on the D string (high 3rd finger), used by A-major harmony parts.
-  // Shares G4's staff line and finger zone; the sharp sign tells them apart.
+  // Shares G4's staff line; the sharp sign and the high-3 spot tell them
+  // apart.
   GameNote(
     id: 'G#4_D',
     letterLabel: 'G#',
@@ -1266,6 +1275,7 @@ const List<GameNote> kGameNotePool = [
     stringIndex: 1,
     frequencyHz: 415.30,
     hintColor: Color(0xFFAB47BC),
+    highThirdFinger: true,
   ),
   // A / La string (A string index: 2)
   GameNote(

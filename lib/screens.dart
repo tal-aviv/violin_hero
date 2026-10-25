@@ -686,10 +686,12 @@ class _ModuleCard extends StatelessWidget {
     this.onTap,
     this.footer,
     this.isDraft = false,
+    this.iconInCircle = false,
   });
 
   final String title;
   final IconData icon;
+  final bool iconInCircle;
   final Color color;
   final VoidCallback? onTap;
   final Widget? footer;
@@ -718,7 +720,19 @@ class _ModuleCard extends StatelessWidget {
                   color: color.withValues(alpha: 0.16),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(icon, color: color),
+                child: iconInCircle
+                    ? Center(
+                        child: Container(
+                          width: 22,
+                          height: 22,
+                          decoration: BoxDecoration(
+                            color: color,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(icon, color: Colors.white, size: 15),
+                        ),
+                      )
+                    : Icon(icon, color: color),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -1785,6 +1799,7 @@ class SongSelectionScreen extends StatelessWidget {
                   _ModuleCard(
                     title: songs[i].title,
                     icon: songs[i].icon,
+                    iconInCircle: songs[i].iconInCircle,
                     color: songs[i].color,
                     isDraft:
                         songs[i].visibility == SongVisibility.admin,
@@ -1982,10 +1997,7 @@ class _ViolinGameScreenState extends State<ViolinGameScreen>
         (_nameMastered[noteId] ?? false) && (_hideNoteNameForNote[noteId] ?? false);
     final alreadyMastered = _mastered[noteId] ?? false;
 
-    final isCorrect =
-        placement.stringIndex == _currentNote.stringIndex &&
-        placement.fingerNumber == _currentNote.fingerNumber &&
-        (!_currentNote.lowSecondFinger || placement.lowSecondVariant);
+    final isCorrect = placement.matchesNote(_currentNote);
     final stringIndex = _currentNote.stringIndex;
     _stringAttempts[stringIndex] = (_stringAttempts[stringIndex] ?? 0) + 1;
 
@@ -2323,6 +2335,7 @@ class _ViolinGameScreenState extends State<ViolinGameScreen>
                       targetFingerNumber: _currentNote.fingerNumber,
                       targetStringIndex: _currentNote.stringIndex,
                       targetLowSecondFinger: _currentNote.lowSecondFinger,
+                      targetHighThirdFinger: _currentNote.highThirdFinger,
                       showHintColors: _showHintColors,
                       hintColor: _currentNote.hintColor,
                       onPlacement: _onFingerPlacement,
@@ -2727,13 +2740,7 @@ class _SongLearningScreenState extends State<SongLearningScreen>
     final noteVisibleInUi = !_isByHeartMode || _byHeartHintNoteId == noteId;
     final hintVisibleNow = noteVisibleInUi && _showHintFor(noteId);
 
-    final isCorrect =
-        placement.stringIndex == note.stringIndex &&
-        placement.fingerNumber == note.fingerNumber &&
-        // Low-2 notes (e.g. C natural on the A string) must be played
-        // with the 2nd finger close to the 1st finger. High-2 targets
-        // (C#, F#) accept either sub-zone for backward compatibility.
-        (!note.lowSecondFinger || placement.lowSecondVariant);
+    final isCorrect = placement.matchesNote(note);
 
     if (isCorrect) {
       setState(() {
@@ -3137,6 +3144,8 @@ class _SongLearningScreenState extends State<SongLearningScreen>
                                       _neckDisplayNote?.stringIndex ?? 0,
                                   targetLowSecondFinger:
                                       _neckDisplayNote?.lowSecondFinger ?? false,
+                                  targetHighThirdFinger:
+                                      _neckDisplayNote?.highThirdFinger ?? false,
                                   showHintColors:
                                       _neckDisplayNote != null && _showHintColors,
                                   hintColor: _neckDisplayNote?.hintColor ??
@@ -3154,6 +3163,8 @@ class _SongLearningScreenState extends State<SongLearningScreen>
                                 targetStringIndex: _currentNote!.stringIndex,
                                 targetLowSecondFinger:
                                     _currentNote!.lowSecondFinger,
+                                targetHighThirdFinger:
+                                    _currentNote!.highThirdFinger,
                                 showHintColors: _showHintColors,
                                 hintColor: _currentNote!.hintColor,
                                 onPlacement: _onFingerPlacement,

@@ -78,7 +78,9 @@ A user's effective level is resolved in this order:
 - Non-admin users see only songs whose ID is in `kLevelSongs[effectiveLevel]`
   **and** whose `visibility` is `public`, in list order. Everything else is
   hidden.
-- Admin accounts (`isAdminUser`) see every song, including drafts, as today.
+- Admin accounts (`isAdminUser`) sit outside the level system entirely: their
+  level is ignored and they see every song, including drafts, as today.
+  `kAdminUsernames` and the admin draft badge are unchanged.
 - A beginner (empty list) sees an empty song screen with a short friendly
   message instead of a blank page.
 

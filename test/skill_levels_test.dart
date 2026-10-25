@@ -117,6 +117,14 @@ void main() {
     expect(song.visibility, SongVisibility.admin);
   });
 
+  test('Yonatan Hakatan Harmony is 16 bars of 4 beats', () {
+    final song = kSongLibrary.firstWhere((s) => s.id == 'lightly_row_harmony');
+    final beats = song.noteDurations
+        .fold<double>(0, (sum, d) => sum + d.spec.beatUnits);
+    expect(beats, 64);
+    expect(song.visibility, SongVisibility.admin);
+  });
+
   group('newSongsForSession', () {
     List<String> newIdsFor(UserSession session) =>
         newSongsForSession(session).map((song) => song.id).toList();

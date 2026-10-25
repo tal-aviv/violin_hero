@@ -2473,7 +2473,8 @@ class _SongLearningScreenState extends State<SongLearningScreen>
   NoteDuration get _currentNoteDuration =>
       _selectedSong.noteDurations[_songIndex];
 
-  int get _currentNoteDurationMs => noteDurationMs(_currentNoteDuration);
+  int get _currentNoteDurationMs =>
+      (noteDurationMs(_currentNoteDuration) / _selectedSong.speed).round();
 
   /// `true` when the current slot is a rest. Centralized so the audio,
   /// hit-test, and rendering branches all check the same condition.

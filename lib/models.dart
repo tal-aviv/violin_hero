@@ -310,6 +310,7 @@ class SongDefinition {
     this.iconInCircle = false,
     this.color = const Color(0xFF4FB38E),
     this.visibility = SongVisibility.public,
+    this.speed = 1.0,
   });
 
   final String id;
@@ -343,6 +344,11 @@ class SongDefinition {
   /// Whether the song is shown to every player or only to admin
   /// accounts. See [SongVisibility].
   final SongVisibility visibility;
+
+  /// Playback speed multiplier applied to every slot's [noteDurationMs]:
+  /// 2.0 plays twice as fast, 0.5 twice as slow. Lets long-note pieces
+  /// keep their written rhythm without dragging.
+  final double speed;
 }
 
 /// Skill level that decides which songs a (non-admin) player can see.

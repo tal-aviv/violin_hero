@@ -1090,6 +1090,87 @@ const List<SongDefinition> kSongLibrary = [
       NoteDuration.quarter, NoteDuration.quarterRest,
     ],
   ),
+  SongDefinition(
+    id: 'lightly_row_harmony',
+    title: 'Yonatan Hakatan Harmony',
+    icon: Icons.park_rounded,
+    iconInCircle: true,
+    color: Color(0xFFAB47BC),
+    visibility: SongVisibility.admin,
+    speed: 2.0,
+    // Second-violin harmony to Yonatan Hakatan / Lightly Row, A major, 2/2
+    // (4 quarter beats per bar), 16 bars. Both Audiveris scans
+    // (tools/test_fixtures/lightlyrowharmony.mvt1.mxl / .mvt2.mxl) were too
+    // garbled to use — wrong key, no reliable barlines, missing notes — so
+    // the whole part was dictated by hand. Form: M5–M8 repeat M1–M4's
+    // opening phrase; M13–M16 repeat M5–M8, ending on a whole-note A.
+    noteIds: [
+      // M1: C# (dotted half) A
+      'C#5_A', 'A4_A',
+      // M2: E (dotted half, D string) D
+      'E4_D', 'D5_A',
+      // M3: C# (half) A B
+      'C#5_A', 'A4_A', 'B4_A',
+      // M4: C# A (halves)
+      'C#5_A', 'A4_A',
+      // M5: = M1
+      'C#5_A', 'A4_A',
+      // M6: = M2
+      'E4_D', 'D5_A',
+      // M7: C# (half) B E (D string)
+      'C#5_A', 'B4_A', 'E4_D',
+      // M8: A (dotted half) + quarter rest
+      'A4_A', '',
+      // M9: G# (half) G# G#  (G# = high 3rd finger on the D string)
+      'G#4_D', 'G#4_D', 'G#4_D',
+      // M10: G# A B (half)
+      'G#4_D', 'A4_A', 'B4_A',
+      // M11: A (half) A A
+      'A4_A', 'A4_A', 'A4_A',
+      // M12: A B C# (half)
+      'A4_A', 'B4_A', 'C#5_A',
+      // M13–M15: = M5–M7
+      'C#5_A', 'A4_A',
+      'E4_D', 'D5_A',
+      'C#5_A', 'B4_A', 'E4_D',
+      // M16: A (whole)
+      'A4_A',
+    ],
+    noteDurations: [
+      // M1: dh q
+      NoteDuration.dottedHalf, NoteDuration.quarter,
+      // M2: dh q
+      NoteDuration.dottedHalf, NoteDuration.quarter,
+      // M3: h q q
+      NoteDuration.half, NoteDuration.quarter, NoteDuration.quarter,
+      // M4: h h
+      NoteDuration.half, NoteDuration.half,
+      // M5: dh q
+      NoteDuration.dottedHalf, NoteDuration.quarter,
+      // M6: dh q
+      NoteDuration.dottedHalf, NoteDuration.quarter,
+      // M7: h q q
+      NoteDuration.half, NoteDuration.quarter, NoteDuration.quarter,
+      // M8: dh + qRest
+      NoteDuration.dottedHalf, NoteDuration.quarterRest,
+      // M9: h q q
+      NoteDuration.half, NoteDuration.quarter, NoteDuration.quarter,
+      // M10: q q h
+      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.half,
+      // M11: h q q
+      NoteDuration.half, NoteDuration.quarter, NoteDuration.quarter,
+      // M12: q q h
+      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.half,
+      // M13: dh q
+      NoteDuration.dottedHalf, NoteDuration.quarter,
+      // M14: dh q
+      NoteDuration.dottedHalf, NoteDuration.quarter,
+      // M15: h q q
+      NoteDuration.half, NoteDuration.quarter, NoteDuration.quarter,
+      // M16: whole
+      NoteDuration.whole,
+    ],
+  ),
 ];
 
 /// Song IDs in each [SkillLevel]'s Practice Songs section, in display

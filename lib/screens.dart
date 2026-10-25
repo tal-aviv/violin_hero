@@ -299,6 +299,7 @@ class _SignupScreenState extends State<SignupScreen> {
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmController = TextEditingController();
   String _selectedAvatarId = kAvatarOptions.first.id;
+  SkillLevel? _selectedLevel;
   String? _errorText;
   bool _creating = false;
   String? _usernameStatus;
@@ -366,6 +367,11 @@ class _SignupScreenState extends State<SignupScreen> {
       setState(() => _errorText = 'Passwords do not match.');
       return;
     }
+    final level = _selectedLevel;
+    if (level == null) {
+      setState(() => _errorText = 'Choose your level.');
+      return;
+    }
     setState(() {
       _creating = true;
       _errorText = null;
@@ -374,6 +380,7 @@ class _SignupScreenState extends State<SignupScreen> {
       username: username,
       password: password,
       avatarId: _selectedAvatarId,
+      level: level,
     );
     if (!mounted) return;
     if (!result.ok) {
@@ -395,7 +402,7 @@ class _SignupScreenState extends State<SignupScreen> {
       username: username,
       type: UserEventType.accountCreated,
       outcome: true,
-      metadata: {'avatarId': _selectedAvatarId},
+      metadata: {'avatarId': _selectedAvatarId, 'level': level.name},
     );
     if (!mounted) return;
     Navigator.of(context).pop();
@@ -488,6 +495,27 @@ class _SignupScreenState extends State<SignupScreen> {
                         },
                       ),
                     ),
+                  ),
+                  const SizedBox(height: 12),
+                  const Text(
+                    'Choose level',
+                    style: TextStyle(color: Color(0xFF5C6485), fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 8),
+                  SegmentedButton<SkillLevel>(
+                    segments: [
+                      for (final level in SkillLevel.values)
+                        ButtonSegment(value: level, label: Text(level.label)),
+                    ],
+                    selected: {?_selectedLevel},
+                    emptySelectionAllowed: true,
+                    showSelectedIcon: false,
+                    onSelectionChanged: (selection) {
+                      setState(() {
+                        _selectedLevel =
+                            selection.isEmpty ? null : selection.first;
+                      });
+                    },
                   ),
                   const SizedBox(height: 12),
                   TextField(
@@ -1689,16 +1717,9 @@ class SongSelectionScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Filter the library by visibility — admin-only songs are hidden
-    // from regular users, but admin accounts see them with a DRAFT
-    // badge so they're easy to spot.
-    final adminSession = isAdminUser(session);
-    final visibleSongs = kSongLibrary
-        .where(
-          (song) =>
-              song.visibility == SongVisibility.public || adminSession,
-        )
-        .toList(growable: false);
+    // Admin accounts see every song (drafts get a DRAFT badge); everyone
+    // else sees only the songs unlocked for their level.
+    final visibleSongs = songsForSession(session);
 
     return Scaffold(
       appBar: AppBar(
@@ -1719,6 +1740,19 @@ class SongSelectionScreen extends StatelessWidget {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                if (visibleSongs.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 48),
+                    child: Text(
+                      'New songs are coming soon!\nKeep practicing in Learn Notes.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 18,
+                        color: Color(0xFF5C6485),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
                 for (int i = 0; i < visibleSongs.length; i++) ...[
                   if (i > 0) const SizedBox(height: 10),
                   _ModuleCard(

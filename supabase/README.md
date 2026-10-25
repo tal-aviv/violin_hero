@@ -11,6 +11,8 @@ Run all SQL files in your Supabase SQL editor (Dashboard → SQL Editor → New 
 1. `supabase/sql/001_create_user_events.sql` — event log table
 2. `supabase/sql/002_create_users.sql` — user accounts table (unique username primary key)
 3. `supabase/sql/003_create_user_progress.sql` — per-user progress table (stars, streaks, section mastery)
+4. `supabase/sql/004_add_note_adaptive_states.sql` — per-note mastery column
+5. `supabase/sql/005_add_user_level.sql` — skill level chosen at signup (run before deploying `violin-auth`)
 
 ## 2) Deploy the Edge Functions
 

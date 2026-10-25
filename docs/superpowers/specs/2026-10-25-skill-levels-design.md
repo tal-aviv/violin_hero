@@ -86,9 +86,9 @@ A user's effective level is resolved in this order:
 
 ## Known limitations
 
-- Without server support for storing `level`, a self-selected level only
-  survives on the device it was chosen on; elsewhere the user falls back to
-  beginner unless listed in `kUserLevels`.
+- The `violin-auth` function stores `level` in `violin_users.level`
+  (migration `005_add_user_level.sql`) and returns it at login, so a
+  self-selected level follows the user across devices.
 - Existing accounts default to beginner, which currently has no songs, so they
   must be added to `kUserLevels` before release to keep access.
 - Like `kAdminUsernames`, this is not a security boundary.

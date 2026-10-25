@@ -339,14 +339,75 @@ class SongDefinition {
   final SongVisibility visibility;
 }
 
+/// Skill level that decides which songs a (non-admin) player can see.
+/// The songs unlocked for each level live in [kLevelSongs].
+enum SkillLevel { beginner, intermediate, advanced }
+
+extension SkillLevelLabel on SkillLevel {
+  String get label => switch (this) {
+        SkillLevel.beginner => 'Beginner',
+        SkillLevel.intermediate => 'Intermediate',
+        SkillLevel.advanced => 'Advanced',
+      };
+}
+
+SkillLevel? skillLevelFromName(Object? name) {
+  for (final level in SkillLevel.values) {
+    if (level.name == name) return level;
+  }
+  return null;
+}
+
+/// Per-user level overrides, keyed by lowercased username. An entry here
+/// wins over the level the player picked at signup; players not listed
+/// (and who never picked one) are beginners. Like [kAdminUsernames], this
+/// ships in the client bundle and is not a security boundary.
+const Map<String, SkillLevel> kUserLevels = {
+  // Advanced
+  'tal': SkillLevel.advanced,
+  'gelila q': SkillLevel.advanced,
+  'gelilaq': SkillLevel.advanced,
+  // Intermediate
+  'דלינה': SkillLevel.intermediate,
+  'dbora': SkillLevel.intermediate,
+  'pricilla': SkillLevel.intermediate,
+  'אלנה': SkillLevel.intermediate,
+  'raman': SkillLevel.intermediate,
+  'אביגיל': SkillLevel.intermediate,
+  'merbl': SkillLevel.intermediate,
+  '567': SkillLevel.intermediate,
+  'מגדה': SkillLevel.intermediate,
+  'abigail': SkillLevel.intermediate,
+  'raman_thecoolest': SkillLevel.intermediate,
+  'elane': SkillLevel.intermediate,
+  'cristal': SkillLevel.intermediate,
+  'מירבל': SkillLevel.intermediate,
+  'prisilla': SkillLevel.intermediate,
+  'hili': SkillLevel.intermediate,
+  'pricilla6767': SkillLevel.intermediate,
+  'prisilla 6767': SkillLevel.intermediate,
+  'tal2': SkillLevel.intermediate,
+};
+
+SkillLevel resolveSkillLevel(String username, SkillLevel? chosenLevel) {
+  return kUserLevels[username.trim().toLowerCase()] ??
+      chosenLevel ??
+      SkillLevel.beginner;
+}
+
 class UserSession {
   const UserSession({
     required this.username,
     required this.avatarId,
+    this.level = SkillLevel.beginner,
   });
 
   final String username;
   final String avatarId;
+
+  /// Effective level, already resolved through [resolveSkillLevel].
+  /// Ignored for admin accounts, which see every song.
+  final SkillLevel level;
 }
 
 /// Persisted per-note adaptive learning state. Shared across the

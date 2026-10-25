@@ -730,7 +730,7 @@ const List<SongDefinition> kSongLibrary = [
     // A gentle Christmas carol — children gathering at the manger.
     icon: Icons.child_care_rounded,
     color: Color(0xFFE57373),
-    visibility: SongVisibility.admin,
+    visibility: SongVisibility.public,
     // Christmas carol (J.A.P. Schulz, "Ihr Kinderlein, kommet") in A major,
     // 2/4. Transcribed via Audiveris OMR
     // (tools/test_fixtures/ocomelittlechildren.musicxml.mxl). Audiveris put a
@@ -1017,6 +1017,46 @@ const List<SongDefinition> kSongLibrary = [
     ],
   ),
 ];
+
+/// Song IDs unlocked for each [SkillLevel], in display order. To unlock a
+/// song for a level, add its ID to that level's list. Lists are
+/// independent: a song meant for several levels is listed in each.
+/// Only `public` songs are shown, so a draft listed here stays hidden
+/// until it's promoted.
+const Map<SkillLevel, List<String>> kLevelSongs = {
+  SkillLevel.beginner: [],
+  SkillLevel.intermediate: [
+    'twinkle_la',
+    'twinkle_harmony_vln2',
+    'frere_jacques',
+    'lightly_row',
+  ],
+  SkillLevel.advanced: [
+    'twinkle_la',
+    'twinkle_harmony_vln2',
+    'frere_jacques',
+    'lightly_row',
+    'song_of_the_wind',
+    'go_tell_aunt_rhody',
+    'o_come_little_children',
+    'ode_to_joy',
+    'mississippi_reel',
+  ],
+};
+
+/// Songs shown on the song-selection screen. Admins see the whole library
+/// (drafts included); everyone else sees their level's public songs.
+List<SongDefinition> songsForSession(UserSession session) {
+  if (isAdminUser(session)) return kSongLibrary;
+  final publicById = {
+    for (final song in kSongLibrary)
+      if (song.visibility == SongVisibility.public) song.id: song,
+  };
+  return [
+    for (final id in kLevelSongs[session.level] ?? const <String>[])
+      ?publicById[id],
+  ];
+}
 
 class GameNote {
   const GameNote({

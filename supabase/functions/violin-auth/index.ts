@@ -70,6 +70,11 @@ Deno.serve(async (req) => {
     const username = String(body.username ?? "").trim().toLowerCase();
     const password = String(body.password ?? "");
     const avatarId = String(body.avatar_id ?? "avatar_frog");
+    const level = ["beginner", "intermediate", "advanced"].includes(
+        String(body.level),
+      )
+      ? String(body.level)
+      : null;
 
     if (!username || username.length < 2) {
       return jsonResponse({ error: "Username must be at least 2 characters" }, 400);
@@ -94,6 +99,7 @@ Deno.serve(async (req) => {
       username,
       password_hash: passwordHash,
       avatar_id: avatarId,
+      level,
     });
 
     if (error) {
@@ -103,7 +109,7 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: error.message }, 500);
     }
 
-    return jsonResponse({ ok: true, username, avatar_id: avatarId });
+    return jsonResponse({ ok: true, username, avatar_id: avatarId, level });
   }
 
   // --- login ---
@@ -117,7 +123,7 @@ Deno.serve(async (req) => {
 
     const { data: user, error } = await supabase
       .from("violin_users")
-      .select("username, password_hash, avatar_id")
+      .select("username, password_hash, avatar_id, level")
       .eq("username", username)
       .maybeSingle();
 
@@ -136,6 +142,7 @@ Deno.serve(async (req) => {
       ok: true,
       username: user.username,
       avatar_id: user.avatar_id,
+      level: user.level,
     });
   }
 

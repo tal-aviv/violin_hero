@@ -11,6 +11,7 @@ class _LocalAuthStore {
   static const String _usernameKey = 'auth_username';
   static const String _passwordKey = 'auth_password';
   static const String _avatarKey = 'auth_avatar_id';
+  static const String _levelKey = 'auth_level';
   static const String _loggedInKey = 'auth_logged_in';
   static const String _authEndpoint = String.fromEnvironment(
     'VH_AUTH_ENDPOINT',
@@ -38,6 +39,21 @@ class _LocalAuthStore {
     }
   }
 
+  static UserSession _sessionFor(
+    String username,
+    String avatarId,
+    SharedPreferences prefs,
+  ) {
+    return UserSession(
+      username: username,
+      avatarId: avatarId,
+      level: resolveSkillLevel(
+        username,
+        skillLevelFromName(prefs.getString(_levelKey)),
+      ),
+    );
+  }
+
   static Future<bool> isLoggedIn() async {
     final prefs = await _prefs();
     return prefs.getBool(_loggedInKey) ?? false;
@@ -62,6 +78,7 @@ class _LocalAuthStore {
     required String username,
     required String password,
     required String avatarId,
+    required SkillLevel level,
   }) async {
     final normalized = username.trim().toLowerCase();
 
@@ -70,20 +87,10 @@ class _LocalAuthStore {
       'username': normalized,
       'password': password,
       'avatar_id': avatarId,
+      'level': level.name,
     });
 
-    if (result != null) {
-      if (result['ok'] == true) {
-        final prefs = await _prefs();
-        await prefs.setString(_usernameKey, normalized);
-        await prefs.setString(_passwordKey, password);
-        await prefs.setString(_avatarKey, avatarId);
-        await prefs.setBool(_loggedInKey, true);
-        return _AuthResult(
-          ok: true,
-          session: UserSession(username: normalized, avatarId: avatarId),
-        );
-      }
+    if (result != null && result['ok'] != true) {
       return _AuthResult(
         error: result['error'] as String? ?? 'Signup failed',
       );
@@ -93,10 +100,11 @@ class _LocalAuthStore {
     await prefs.setString(_usernameKey, normalized);
     await prefs.setString(_passwordKey, password);
     await prefs.setString(_avatarKey, avatarId);
+    await prefs.setString(_levelKey, level.name);
     await prefs.setBool(_loggedInKey, true);
     return _AuthResult(
       ok: true,
-      session: UserSession(username: normalized, avatarId: avatarId),
+      session: _sessionFor(normalized, avatarId, prefs),
     );
   }
 
@@ -117,13 +125,20 @@ class _LocalAuthStore {
         final avatarId =
             result['avatar_id'] as String? ?? kAvatarOptions.first.id;
         final prefs = await _prefs();
+        final remoteLevel = skillLevelFromName(result['level']);
+        if (remoteLevel != null) {
+          await prefs.setString(_levelKey, remoteLevel.name);
+        } else if (prefs.getString(_usernameKey) != normalized) {
+          // The stored level belongs to a different account on this device.
+          await prefs.remove(_levelKey);
+        }
         await prefs.setString(_usernameKey, normalized);
         await prefs.setString(_passwordKey, password);
         await prefs.setString(_avatarKey, avatarId);
         await prefs.setBool(_loggedInKey, true);
         return _AuthResult(
           ok: true,
-          session: UserSession(username: normalized, avatarId: avatarId),
+          session: _sessionFor(normalized, avatarId, prefs),
         );
       }
       return _AuthResult(
@@ -139,7 +154,7 @@ class _LocalAuthStore {
       final avatarId = prefs.getString(_avatarKey) ?? kAvatarOptions.first.id;
       return _AuthResult(
         ok: true,
-        session: UserSession(username: normalized, avatarId: avatarId),
+        session: _sessionFor(normalized, avatarId, prefs),
       );
     }
     return const _AuthResult(error: 'Invalid username or password');
@@ -150,7 +165,7 @@ class _LocalAuthStore {
     final username = prefs.getString(_usernameKey);
     if (username == null || username.isEmpty) return null;
     final avatarId = prefs.getString(_avatarKey) ?? kAvatarOptions.first.id;
-    return UserSession(username: username, avatarId: avatarId);
+    return _sessionFor(username, avatarId, prefs);
   }
 
   static Future<UserSession?> updateAvatar(String avatarId) async {
@@ -159,4 +174,3 @@ class _LocalAuthStore {
     return currentProfile();
   }
 }
-

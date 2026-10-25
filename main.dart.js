@@ -25460,7 +25460,7 @@ if(a===0)return s
 return B.d.cl(-25.19685039370079+A.aNn(a)*160/25.4,-25.19685039370079,s)},
 auG(a){return B.d.cl(-25.19685039370079+A.aAW(3)*0.72*160/25.4,-25.19685039370079,a.b-62.99212598425197)},
 aAX(a){var s=A.auG(a),r=A.jS(1,a)
-return B.d.cl(A.jS(3,a)+(s-r)*0.65,-25.19685039370079,a.b-62.99212598425197)},
+return B.d.cl(A.jS(3,a)+(s-r)*0.5,-25.19685039370079,a.b-62.99212598425197)},
 aAY(a,b,c,d){if(a===2&&c)return A.auG(d)
 if(a===3&&b)return A.aAX(d)
 return A.jS(a,d)},

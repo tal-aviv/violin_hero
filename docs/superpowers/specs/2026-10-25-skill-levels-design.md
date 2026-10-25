@@ -28,7 +28,14 @@ Songs are shown in the order they appear in the level's list.
 
 ### Initial user assignments
 
-`kUserLevels` starts empty until the owner supplies assignments.
+| Username | Level |
+|---|---|
+| `tal` | advanced |
+| `gelila q` | advanced |
+| `gelilaq` | advanced |
+
+Keys are matched against the trimmed, lowercased username, so `gelila q`
+keeps its inner space. Every other existing account resolves to beginner.
 
 ## Level resolution
 

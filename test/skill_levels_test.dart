@@ -133,9 +133,12 @@ void main() {
       expect(newIdsFor(_session('kid', SkillLevel.beginner)), isEmpty);
       expect(
         newIdsFor(_session('kid', SkillLevel.intermediate)),
-        ['song_of_the_wind'],
+        ['song_of_the_wind', 'go_tell_aunt_rhody'],
       );
-      expect(newIdsFor(_session('kid', SkillLevel.advanced)), ['allegro']);
+      expect(
+        newIdsFor(_session('kid', SkillLevel.advanced)),
+        ['allegro', 'long_long_ago'],
+      );
     });
 
     test('new songs stay out of the same level\'s practice songs', () {

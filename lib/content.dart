@@ -923,7 +923,7 @@ const List<SongDefinition> kSongLibrary = [
     // A nostalgic tune of old tales — an open storybook.
     icon: Icons.auto_stories_rounded,
     color: Color(0xFF8D6E63),
-    visibility: SongVisibility.admin,
+    visibility: SongVisibility.public,
     // T.H. Bayly, "Long, Long Ago" (Suzuki Book 1), A major, 4/4. Transcribed
     // via Audiveris OMR (tools/test_fixtures/longlongago.musicxml.mvt1.mxl).
     // Pitches read cleanly; the rhythm needed light repair (Audiveris misread
@@ -1203,8 +1203,8 @@ const Map<SkillLevel, List<String>> kLevelSongs = {
 /// [kLevelSongs]. When a song graduates, move its ID to [kLevelSongs].
 const Map<SkillLevel, List<String>> kLevelNewSongs = {
   SkillLevel.beginner: [],
-  SkillLevel.intermediate: ['song_of_the_wind'],
-  SkillLevel.advanced: ['allegro'],
+  SkillLevel.intermediate: ['song_of_the_wind', 'go_tell_aunt_rhody'],
+  SkillLevel.advanced: ['allegro', 'long_long_ago'],
 };
 
 /// The admin account's New Songs section. Drafts may be listed here.

@@ -1185,6 +1185,7 @@ const Map<SkillLevel, List<String>> kLevelSongs = {
     'twinkle_harmony_vln2',
     'frere_jacques',
     'lightly_row',
+    'song_of_the_wind',
   ],
   SkillLevel.advanced: [
     'twinkle_la',
@@ -1203,7 +1204,7 @@ const Map<SkillLevel, List<String>> kLevelSongs = {
 /// [kLevelSongs]. When a song graduates, move its ID to [kLevelSongs].
 const Map<SkillLevel, List<String>> kLevelNewSongs = {
   SkillLevel.beginner: [],
-  SkillLevel.intermediate: ['song_of_the_wind', 'go_tell_aunt_rhody'],
+  SkillLevel.intermediate: ['go_tell_aunt_rhody'],
   SkillLevel.advanced: ['allegro', 'long_long_ago'],
 };
 

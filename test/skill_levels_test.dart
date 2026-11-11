@@ -33,12 +33,13 @@ void main() {
       expect(_songIdsFor(_session('kid', SkillLevel.beginner)), isEmpty);
     });
 
-    test('intermediate gets the four starter songs in order', () {
+    test('intermediate gets the starter songs plus Song of the Wind, in order', () {
       expect(_songIdsFor(_session('kid', SkillLevel.intermediate)), [
         'twinkle_la',
         'twinkle_harmony_vln2',
         'frere_jacques',
         'lightly_row',
+        'song_of_the_wind',
       ]);
     });
 

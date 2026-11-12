@@ -43329,7 +43329,7 @@ $S:298}
 A.Pw.prototype={
 av(a,b){var s,r,q,p=$.V(),o=A.ao()
 o.r=this.b.gp()
-s=A.kR(B.NI,6)
+s=A.kR(B.NH,6)
 r=A.po(B.NN,new A.e(7,b.b))
 q=A.bs(p.r)
 q.ak(new A.k2(s))
@@ -43831,9 +43831,9 @@ o=new A.aY(r)
 o.dV()
 o.Iz(1.5707963267948966)
 for(n=0;n<4;++n){a.fa(p,m)
-s.concat(A.avn(A.vW(r)))}a.fG(B.NZ,B.NH,m)
-a.fG(B.NX,B.NG,m)
-a.fG(B.NY,B.ND,m)
+s.concat(A.avn(A.vW(r)))}a.fG(B.NY,B.NG,m)
+a.fG(B.NW,B.NF,m)
+a.fG(B.NX,B.ND,m)
 s.restore()},
 dK(a){return!a.b.j(0,this.b)}}
 A.x3.prototype={
@@ -53554,7 +53554,7 @@ default:s=p}return s},
 qT(a,b){var s
 switch(a.a){case 2:s=B.NB
 break
-case 0:s=B.NF
+case 0:s=B.NE
 break
 case 1:s=B.k
 break
@@ -62532,7 +62532,7 @@ o=B.dT
 r=!1
 break
 case 3:q=a0.U(0,new A.e(c.dy.c,0))
-p=B.NW
+p=B.NV
 o=B.hR
 break
 default:r=b
@@ -77925,7 +77925,7 @@ t.x.a(o)
 s=o.dU(a)
 if(!this.go){r=s.b
 if(r<0||s.a<0)return A.ba(o.aF(null),B.k)
-if(r>o.gu().b||s.a>o.gu().a)return B.O3}q=A.Xc(p)
+if(r>o.gu().b||s.a>o.gu().a)return B.O4}q=A.Xc(p)
 return A.ba(o.aF(null),new A.e(s.a+q.a,s.b+q.b))},
 EX(a,b){var s,r,q,p=this,o=p.dx,n=A.Xc(o)
 o=o.c.gT()
@@ -85033,25 +85033,23 @@ return!J.d(a.b,s.b)||a.c!=s.c||a.d!==s.d||a.e!==s.e||a.f!==s.f||!a.r.j(0,s.r)||a
 A.RH.prototype={
 av(a,b){var s,r,q,p,o,n
 a.r0(b.a/24,b.b/24)
-s=a.a
-s.translate(0,-1.8)
-$.V()
-r=A.ao()
-q=this.b
-r.r=q.gp()
-r.b=B.an
-r.c=1.4
-r.d=B.ch
-for(p=1;p<=4;++p){o=A.kR(B.NC,2.2*p)
-n=r.cp()
-s.drawArc.apply(s,[A.ce(o),0,180,!1,n])
-n.delete()}a.fG(B.NE,B.NR,r)
 $.V()
 s=A.ao()
-s.r=q.gp()
-s.c=2
+r=this.b
+s.r=r.gp()
+s.b=B.an
+s.c=1.4
 s.d=B.ch
-a.fG(B.NV,B.O4,s)},
+for(q=a.a,p=1;p<=4;++p){o=A.kR(B.O1,2.6*p)
+n=s.cp()
+q.drawArc.apply(q,[A.ce(o),0,180,!1,n])
+n.delete()}a.fG(B.NI,B.NZ,s)
+$.V()
+q=A.ao()
+q.r=r.gp()
+q.c=2
+q.d=B.ch
+a.fG(B.NC,B.NR,q)},
 dK(a){return!a.b.j(0,this.b)}}
 A.ajw.prototype={
 $2(a,b){return new A.aH(A.j(a),b,t.YM)},
@@ -91361,30 +91359,30 @@ B.Nw=new A.e(0,26)
 B.Nz=new A.e(0,8)
 B.NA=new A.e(0,-1)
 B.NB=new A.e(11,-4)
-B.NC=new A.e(12,10)
+B.NC=new A.e(8,18.8)
 B.dT=new A.e(1,0)
 B.ND=new A.e(1,3)
-B.NE=new A.e(12,6.6)
-B.NF=new A.e(22,0)
-B.NG=new A.e(3,0)
-B.NH=new A.e(3,-3)
-B.NI=new A.e(6,6)
+B.NE=new A.e(22,0)
+B.NF=new A.e(3,0)
+B.NG=new A.e(3,-3)
+B.NH=new A.e(6,6)
+B.NI=new A.e(12,16.6)
 B.NL=new A.e(-0.3333333333333333,0)
 B.NN=new A.e(5,10.5)
 B.NO=new A.e(1/0,0)
 B.v9=new A.e(-0.25,0)
 B.NQ=new A.e(17976931348623157e292,0)
-B.NR=new A.e(12,20.5)
+B.NR=new A.e(16,18.8)
 B.NU=new A.e(0,-0.25)
-B.NV=new A.e(7.5,21)
-B.NW=new A.e(-1,0)
-B.NX=new A.e(-3,0)
-B.NY=new A.e(-3,3)
-B.NZ=new A.e(-3,-3)
+B.NV=new A.e(-1,0)
+B.NW=new A.e(-3,0)
+B.NX=new A.e(-3,3)
+B.NY=new A.e(-3,-3)
+B.NZ=new A.e(12,18.8)
 B.a0c=new A.e(0,-0.005)
+B.O1=new A.e(12,6.2)
 B.va=new A.e(0.25,0)
-B.O3=new A.e(1/0,1/0)
-B.O4=new A.e(16.5,21)
+B.O4=new A.e(1/0,1/0)
 B.b6=new A.kC(0,"iOs")
 B.fd=new A.kC(1,"android")
 B.hS=new A.kC(2,"linux")
@@ -92151,11 +92149,11 @@ B.Ai=new A.e6("Create account",null,null,null,null,null,null,null,null,null)
 B.XQ=new A.e6("Change profile icon",null,null,null,null,null,null,null,null,null)
 B.a0f=new A.af0(0,"system")
 B.NM=new A.e(0.056,0.024)
-B.O2=new A.e(0.108,0.3085)
+B.O3=new A.e(0.108,0.3085)
 B.NJ=new A.e(0.198,0.541)
 B.NT=new A.e(0.3655,1)
-B.O1=new A.e(0.5465,0.989)
-B.iu=new A.Bs(B.NM,B.O2,B.NJ,B.NT,B.O1)
+B.O2=new A.e(0.5465,0.989)
+B.iu=new A.Bs(B.NM,B.O3,B.NJ,B.NT,B.O2)
 B.Aj=new A.Bt(0)
 B.XR=new A.Bt(0.5)
 B.XS=new A.Bu(null)

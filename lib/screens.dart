@@ -687,11 +687,15 @@ class _ModuleCard extends StatelessWidget {
     this.footer,
     this.isDraft = false,
     this.iconInCircle = false,
+    this.customIcon,
   });
 
   final String title;
   final IconData icon;
   final bool iconInCircle;
+
+  /// When set, drawn in [color] instead of [icon].
+  final SongCustomIcon? customIcon;
   final Color color;
   final VoidCallback? onTap;
   final Widget? footer;
@@ -732,6 +736,8 @@ class _ModuleCard extends StatelessWidget {
                           child: Icon(icon, color: Colors.white, size: 15),
                         ),
                       )
+                    : customIcon != null
+                    ? Center(child: _songCustomIcon(customIcon!, color))
                     : Icon(icon, color: color),
               ),
               const SizedBox(width: 12),
@@ -1800,6 +1806,7 @@ class SongSelectionScreen extends StatelessWidget {
                     title: songs[i].title,
                     icon: songs[i].icon,
                     iconInCircle: songs[i].iconInCircle,
+                    customIcon: songs[i].customIcon,
                     color: songs[i].color,
                     isDraft:
                         songs[i].visibility == SongVisibility.admin,

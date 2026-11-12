@@ -726,15 +726,15 @@ const List<SongDefinition> kSongLibrary = [
   ),
   SongDefinition(
     id: 'hanukkah_vln2',
-    title: 'Hanukkah (Violin 2)',
-    // Hanukkah tune — menorah candle flames.
-    icon: Icons.local_fire_department_rounded,
+    title: 'Hanukka',
+    customIcon: SongCustomIcon.menorah,
     color: Color(0xFF3B6FE0),
     visibility: SongVisibility.admin,
     // Violin 2 line only (the lower/second staff of each two-violin
     // system) from tools/test_fixtures/hanukka.mxl, transcribed via
     // Audiveris OMR and extracted with musicxml_to_song.py after
-    // stripping the Violin 1 part. A major, 4/4, 16 bars, range E4 → D5,
+    // stripping the Violin 1 part. A major, 16 bars, range E4 → D5, with every
+    // note value halved from the 4/4 score (so each bar is 2 beats),
     // all on the D and A strings. Form: A (M1–4) · B (M5–8) · A (M9–12)
     // · closing (M13–16). Several bars were corrected / supplied by ear
     // against the score (M4, M6–8, M13–16).
@@ -745,14 +745,14 @@ const List<SongDefinition> kSongLibrary = [
       'A4_A', 'F#4_D', 'A4_A',
       // M3
       'F#4_D', 'A4_A', 'D5_A', 'C#5_A',
-      // M4: whole note B (A string) — supplied by ear; the OMR left
+      // M4: B (A string) — supplied by ear; the OMR left
       // this Violin 2 bar empty.
       'B4_A',
       // M5
       'G4_D', 'E4_D', 'G4_D',
       // M6: repeat of M5
       'G4_D', 'E4_D', 'G4_D',
-      // M7: E G C# B (quarters)
+      // M7: E G C# B (eighths)
       'E4_D', 'G4_D', 'C#5_A', 'B4_A',
       // M8
       'A4_A',
@@ -764,48 +764,48 @@ const List<SongDefinition> kSongLibrary = [
       'F#4_D', 'A4_A', 'D5_A', 'C#5_A',
       // M12: repeat of M4
       'B4_A',
-      // M13: C# C# C# (2 quarters + half)
+      // M13: C# C# C# (2 eighths + quarter)
       'C#5_A', 'C#5_A', 'C#5_A',
       // M14: same as M13
       'C#5_A', 'C#5_A', 'C#5_A',
-      // M15: C# A B C# (quarters)
+      // M15: C# A B C# (eighths)
       'C#5_A', 'A4_A', 'B4_A', 'C#5_A',
-      // M16: D (whole)
+      // M16: D (half)
       'D5_A',
     ],
     noteDurations: [
       // M1
-      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.half,
+      NoteDuration.eighth, NoteDuration.eighth, NoteDuration.quarter,
       // M2
-      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.half,
+      NoteDuration.eighth, NoteDuration.eighth, NoteDuration.quarter,
       // M3
-      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.eighth, NoteDuration.eighth, NoteDuration.eighth, NoteDuration.eighth,
       // M4
-      NoteDuration.whole,
+      NoteDuration.half,
       // M5
-      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.half,
+      NoteDuration.eighth, NoteDuration.eighth, NoteDuration.quarter,
       // M6: repeat of M5
-      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.half,
-      // M7: E G C# B (quarters)
-      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.eighth, NoteDuration.eighth, NoteDuration.quarter,
+      // M7: E G C# B (eighths)
+      NoteDuration.eighth, NoteDuration.eighth, NoteDuration.eighth, NoteDuration.eighth,
       // M8
-      NoteDuration.whole,
+      NoteDuration.half,
       // M9: repeat of M1
-      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.half,
+      NoteDuration.eighth, NoteDuration.eighth, NoteDuration.quarter,
       // M10: repeat of M2
-      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.half,
+      NoteDuration.eighth, NoteDuration.eighth, NoteDuration.quarter,
       // M11: repeat of M3
-      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.quarter, NoteDuration.quarter,
+      NoteDuration.eighth, NoteDuration.eighth, NoteDuration.eighth, NoteDuration.eighth,
       // M12: repeat of M4
-      NoteDuration.whole,
-      // M13: C# C# C# (2 quarters + half)
-      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.half,
+      NoteDuration.half,
+      // M13: C# C# C# (2 eighths + quarter)
+      NoteDuration.eighth, NoteDuration.eighth, NoteDuration.quarter,
       // M14: same as M13
-      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.half,
-      // M15: C# A B C# (quarters)
-      NoteDuration.quarter, NoteDuration.quarter, NoteDuration.quarter, NoteDuration.quarter,
-      // M16: D (whole)
-      NoteDuration.whole,
+      NoteDuration.eighth, NoteDuration.eighth, NoteDuration.quarter,
+      // M15: C# A B C# (eighths)
+      NoteDuration.eighth, NoteDuration.eighth, NoteDuration.eighth, NoteDuration.eighth,
+      // M16: D (half)
+      NoteDuration.half,
     ],
   ),
   SongDefinition(

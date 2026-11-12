@@ -285,6 +285,9 @@ class LearningStage {
 /// before being released to the general player base.
 enum SongVisibility { public, admin }
 
+/// Hand-drawn card icons for songs whose subject has no Material icon.
+enum SongCustomIcon { menorah }
+
 /// Lowercased usernames that can see admin-only ([SongVisibility.admin])
 /// songs. Edit this set to grant additional accounts access to the
 /// staging library.
@@ -307,6 +310,7 @@ class SongDefinition {
     required this.noteIds,
     required this.noteDurations,
     this.icon = Icons.music_note_rounded,
+    this.customIcon,
     this.iconInCircle = false,
     this.color = const Color(0xFF4FB38E),
     this.visibility = SongVisibility.public,
@@ -332,6 +336,9 @@ class SongDefinition {
   /// visual identity without the selection screen needing per-song
   /// hardcoding.
   final IconData icon;
+
+  /// When set, drawn on the card instead of [icon].
+  final SongCustomIcon? customIcon;
 
   /// Draws [icon] in white inside a filled circle of [color] — the look
   /// harmony parts use to pair with their melody (like `stars_rounded`

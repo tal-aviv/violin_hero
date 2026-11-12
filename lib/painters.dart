@@ -1023,8 +1023,8 @@ Widget _songCustomIcon(SongCustomIcon icon, Color color) => switch (icon) {
   ),
 };
 
-/// A nine-branched Hanukkah menorah, laid out on a 24×24 grid: four
-/// nested arms per side and a taller center shamash.
+/// A simplified Hanukkah menorah on a 24×24 grid: four nested arcs
+/// (eight branches) on a short foot and base.
 class _MenorahPainter extends CustomPainter {
   const _MenorahPainter(this.color);
 
@@ -1033,7 +1033,6 @@ class _MenorahPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     canvas.scale(size.width / 24, size.height / 24);
-    canvas.translate(0, -1.8);
     final stroke = Paint()
       ..color = color
       ..style = PaintingStyle.stroke
@@ -1041,9 +1040,11 @@ class _MenorahPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round;
 
     const cx = 12.0;
-    const armTop = 10.0;
+    const armTop = 6.2;
+    const ringGap = 2.6;
+    const baseY = 18.8;
     for (var k = 1; k <= 4; k++) {
-      final r = 2.2 * k;
+      final r = ringGap * k;
       canvas.drawArc(
         Rect.fromCircle(center: const Offset(cx, armTop), radius: r),
         0,
@@ -1053,10 +1054,14 @@ class _MenorahPainter extends CustomPainter {
       );
     }
 
-    canvas.drawLine(const Offset(cx, 6.6), const Offset(cx, 20.5), stroke);
     canvas.drawLine(
-      const Offset(7.5, 21),
-      const Offset(16.5, 21),
+      const Offset(cx, armTop + 4 * ringGap),
+      const Offset(cx, baseY),
+      stroke,
+    );
+    canvas.drawLine(
+      const Offset(8, baseY),
+      const Offset(16, baseY),
       Paint()
         ..color = color
         ..strokeWidth = 2
